@@ -29,7 +29,7 @@ const forgotPassword = z.object({
   email:z.string().email("Invalid email address"),
 })
 const refreshToken = z.object({
-  body:z.object({
+  token:z.object({
         refreshToken: z.string().min(1, 'Refresh token is required')
     })
 })

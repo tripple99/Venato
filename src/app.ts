@@ -148,7 +148,7 @@ private async initializeErrorHandling():Promise<void>{
     this.express.use(xssClean())
  }
  private configureCors():void{
-    const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : ["http:localhost:4000","'http://127.0.0.1:4000"]
+    const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : ["http:localhost:4000","'http://127.0.0.1:4000","http://localhost:5173"]
 
     interface corsConfiguration{
         origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void;

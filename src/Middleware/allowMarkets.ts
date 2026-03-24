@@ -17,7 +17,6 @@ export interface IMarket {
 declare global {
   namespace Express{
     interface Request{
-      user?:TokenPayload,
       markets?:string
     }
   }

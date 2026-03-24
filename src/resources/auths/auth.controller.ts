@@ -1,10 +1,10 @@
-import { Request,Response,NextFunction, Router } from "express";
+import { Request, Response, NextFunction, Router } from "express";
 import HttpException from "../../exceptions/http.exception";
 import GlobalController from "../../controllers/globalControllers";
 import AuthService from "./auth.service";
-import { authenticate,authorize } from "../../Middleware/auths";
+import { authenticate, authorize, TokenPayload } from "../../Middleware/auths";
 import schemaValidator from "../../Middleware/schema-validation.middlware";
-import validator  from "./auth.validation"
+import validator from "./auth.validation";
 
 
 
@@ -19,6 +19,7 @@ class AuthControllers implements GlobalController{
      private initializeRoutes():void{
         this.router.post('/',schemaValidator(validator.register),this.register),
         this.router.post('/login',schemaValidator(validator.login),this.login),
+        this.router.post('/refresh',schemaValidator(validator.refreshToken),this.refreshToken),
         this.router.get('/logout',authenticate,schemaValidator(validator.refreshToken),this.logout),
         this.router.post("/forgot-password",authenticate,schemaValidator(validator.forgotPassword),this.forgotPassword)
         this.router.post("/validate-Otp",authenticate,schemaValidator(validator.validateOtp),this.validateOtp)
@@ -51,6 +52,21 @@ class AuthControllers implements GlobalController{
           next(error)     
       }
    } 
+
+   private refreshToken = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
+    try {
+        const {refreshToken} = req.body;
+        if(!refreshToken) throw new HttpException(404,"fialed","Token not found")
+        const result = await this.authService.refreshToken(refreshToken);
+        res.status(200).json({
+            status:"Success",
+            message:"Token refreshed successfully",
+            payload:result
+        })
+    } catch (error) {
+        next(error)
+    }
+   }
    private forgotPassword = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
         const {email} = req.body;
@@ -80,7 +96,8 @@ class AuthControllers implements GlobalController{
    private resetPassword = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
         const{password} = req.body;
-        const result = await this.authService.resetPassword(req.user!,password);
+        if (!req.user) throw new HttpException(401, "error", "Unauthorized - user not found");
+        const result = await this.authService.resetPassword(req.user as TokenPayload, password);
         res.status(201).json({
             status:"Success",
             message:"User password has been successfully reseted",
@@ -92,13 +109,12 @@ class AuthControllers implements GlobalController{
    }
    private logout = async(req:Request,res:Response,next:NextFunction)=>{
      try {
-
         const token = req.user;
-        // if(!token) throw new HttpException(404,"fialed","Token not found")
-        await this.authService.logout(token!)
+        if(!token) throw new HttpException(404,"fialed","Token not found")
+        await this.authService.logout(token as TokenPayload)
         res.status(200).json({status: "success", message: "Logout successful", payload:req.user});
      } catch (error) {
-        next()
+        next(error)
      }
    }
 }

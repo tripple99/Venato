@@ -7,7 +7,7 @@ import NodeMailerService from "../mail/nodemailer.service";
 import OtpService from "../otp/opt.service";
 import Mailtemplates from "../mail/mail.templates";
 import ProfileService from "../profile/profile.service";
-
+import { Types } from "mongoose";
 class AuthService {
      private Mail = new NodeMailerService();
      private Otp = new OtpService();
@@ -28,7 +28,11 @@ class AuthService {
         await createUser.save();
         const userProfile = this.Profile.createProfile({
             fullname:createUser.fullname,
-            username:userName
+            username:userName,
+            uid:new Types.ObjectId(createUser.id),
+            roles:createUser.userRole,
+            userMarket:createUser.allowedMarkets
+          
         })  
         return {accessToken,refreshToken}
      }catch (error) {
@@ -183,7 +187,7 @@ class AuthService {
     public async logout(auth:TokenPayload):Promise<void>{
         try {
             const result = await authModel.findByIdAndUpdate(
-                auth.id,
+                auth?.id,
                 {
                     $unset: {
                         sessionToken: "",

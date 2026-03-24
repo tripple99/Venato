@@ -14,6 +14,15 @@ class ProfileService{
         throw new HttpException(400,"Failed",`Failed to create user Profile ${error}`)
       }
   }
+ public async getProfile(uid:string):Promise<IProfile>{
+  try {
+    const userProfile = await profileModel.findById({uid}).exec()
+    if(!userProfile) throw new HttpException(404,"Not found",`User doesn't exist`)
+    return userProfile
+  }catch(error) {
+    throw new HttpException(404,"Not found",`Failed to get user`)
+  }
+ }
  public async updateProfile(uid: string, data: Partial<IProfile>): Promise<IProfile> {
   try {
     // If uid is the _id

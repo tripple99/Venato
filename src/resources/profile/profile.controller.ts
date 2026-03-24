@@ -17,10 +17,26 @@ class ProfileController implements GlobalController{
      this.intiailizeRoutes()
    }
    private intiailizeRoutes():void{
+      this.router.get("/me",[authenticate],this.getProfile)
       this.router.patch("/:id",[authenticate],schemaValidator(validator.updateProfile),this.update)
       this.router.delete("/:id",[authenticate,authorize([AuthRole.superAdmin])],this.delete)
    }
 
+
+   private getProfile = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
+    try {
+      const user = req.user
+      if(!user) throw new HttpException(404,"Not found","User not found")
+      const result = await this.profile.getProfile(user.id)
+      res.status(200).json({
+        status:"Success",
+        message:"Profile fetched successfully",
+        payload:result
+      })
+    } catch (error) {
+      next(error)
+    }
+   }
    private update = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
       const uid = req.params.id
