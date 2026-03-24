@@ -9,7 +9,7 @@ import {authenticate,authorize} from "../../Middleware/auths"
 
 
 class ProfileController implements GlobalController{
-   public path = "/profile";
+   public path = "profile";
    public router = Router();
    private profile = new ProfileService()
    
