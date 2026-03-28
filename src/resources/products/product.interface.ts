@@ -34,7 +34,9 @@ export interface IMarketProduct {
   quantityAvailable?: number;
   description?: string;
   market: Types.ObjectId;
-  priceHistory:PriceHistory[]
+  priceHistory:PriceHistory[],
+  createdBy:Types.ObjectId;
+  updatedBy:Types.ObjectId;
 }
 
 

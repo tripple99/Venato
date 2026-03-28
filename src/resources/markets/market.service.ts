@@ -1,8 +1,11 @@
  import HttpException from "../../exceptions/http.exception";
  import marketModel from "./market.model";
  import {IMarketData} from "./market.interface";
-
-
+import { PaginationQuery } from "../../interface/pagination.interface";
+import { createPaginatedResult } from "../../utils/pagination";
+import { buildSortOptions } from "../../utils/pagination";
+import { paginationQuery } from "../../utils/pagination";
+import { PaginationResult } from "../../interface/pagination.interface";
 
  class MarketService{
    
@@ -13,15 +16,34 @@
       const newMarket = new marketModel(data);
       return await newMarket.save() 
     } catch (error) {
-      throw new HttpException(404,"failed",`Market creation failed ${error}`);
+      throw new HttpException(404,"failed",`Market creation failed `);
     }
 
    }
-   public async fetchAll():Promise<IMarketData[]>{
+   public async fetchAll(query:any):Promise<PaginationResult<IMarketData>>{
     try {
-      return await marketModel.find();
+      const pagination = paginationQuery(query);
+      const sortOptions = buildSortOptions(
+        pagination.sortBy,
+        pagination.sortOrder,
+      ); 
+      const [markets, totalCount] = await Promise.all([
+        marketModel
+          .find()
+          .sort(sortOptions)
+          .skip(pagination.skip)
+          .limit(pagination.limit)
+          .lean(),
+        marketModel.countDocuments().lean(),
+      ]);
+      return createPaginatedResult(
+        markets,
+        totalCount,
+        pagination.page,
+        pagination.limit,
+      );
     } catch (error) {
-      throw new HttpException(404,"failed",`Failed to fetch market data ${error}`)
+      throw new HttpException(404,"failed",`Failed to fetch market data `)
     }
    }
    public async fetchById(uid:string):Promise<IMarketData>{
@@ -30,7 +52,7 @@
        if(!market) throw new HttpException(404,"Not Found","Market doesn't exist ")
        return market; 
     } catch (error) {
-      throw new HttpException(404,"failed","Failed to fetch market data ${error")
+      throw new HttpException(404,"failed","Failed to fetch market data ")
     }
    }
  }

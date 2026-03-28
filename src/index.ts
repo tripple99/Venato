@@ -12,6 +12,7 @@ import AccessController from './resources/access-control/access-control.controll
 import StatsController from './resources/stats/stats.controller';
 import ProfileController from  './resources/profile/profile.controller';
 import WatchListControllers from './resources/watch-List/watch-list.controller';
+import InventoryController from './inventory/inventory.controller';
 
 
   
@@ -62,6 +63,7 @@ async function startApp() {
                     new StatsController(),
                     new ProfileController(),
                     new WatchListControllers(),
+                    new InventoryController(),
                 ], 
                 port,
             )

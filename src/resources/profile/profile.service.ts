@@ -9,14 +9,15 @@ class ProfileService{
   public async createProfile(data:IProfile):Promise<IProfile  >{
       try {
         const createProfile = new profileModel(data)
+        console.log(createProfile)
         return await createProfile.save()
       } catch (error) {
-        throw new HttpException(400,"Failed",`Failed to create user Profile ${error}`)
+        throw new HttpException(400,"Failed",`Failed to create user Profile`)
       }
   }
  public async getProfile(uid:string):Promise<IProfile>{
   try {
-    const userProfile = await profileModel.findById({uid}).exec()
+    const userProfile = await profileModel.findOne({uid}).exec()
     if(!userProfile) throw new HttpException(404,"Not found",`User doesn't exist`)
     return userProfile
   }catch(error) {
@@ -38,7 +39,7 @@ class ProfileService{
 
     return updatedProfile;
   } catch (error) {
-    throw new HttpException(400, "Failed", `Failed to update user profile ${error}`);
+    throw new HttpException(400, "Failed", `Failed to update user profile`);
   }
 }
 public async deleteProfile(uid:string):Promise<IProfile>{

@@ -8,6 +8,7 @@ import OtpService from "../otp/opt.service";
 import Mailtemplates from "../mail/mail.templates";
 import ProfileService from "../profile/profile.service";
 import { Types } from "mongoose";
+import { JwtPayload } from "jsonwebtoken";
 class AuthService {
      private Mail = new NodeMailerService();
      private Otp = new OtpService();
@@ -30,9 +31,7 @@ class AuthService {
             fullname:createUser.fullname,
             username:userName,
             uid:new Types.ObjectId(createUser.id),
-            roles:createUser.userRole,
-            userMarket:createUser.allowedMarkets
-          
+            roles:createUser.userRole,   
         })  
         return {accessToken,refreshToken}
      }catch (error) {
@@ -45,6 +44,7 @@ class AuthService {
            
             
             const user = await authModel.findOne({email:email});
+
            
             //check if user has been registered
 
@@ -53,6 +53,7 @@ class AuthService {
             //check if users password is valid 
 
             if(!(await user.isValidPassword(password))) throw new HttpException(401,"Unauthorized","Invalid credentials")
+            if(!user.isVerified) throw new HttpException(401,"Unauthorized","User not verified")   
 
             //check if user already has nan active session 
             
@@ -97,8 +98,8 @@ class AuthService {
 
     public async refreshToken(token:string):Promise<{refreshToken:string,accessToken:string}>{
          try {
-            const decoded = await tokens.verifyRefreshToken(token)
-            const user = await authModel.findOne({decoded});
+            const decoded = await tokens.verifyRefreshToken(token) as JwtPayload
+            const user = await authModel.findById(decoded.id);
             if(!user) throw new HttpException(401,"Not found","User doesn't exist")
             const tokenSession = tokens.generateSessionId();
             const  refreshSession = tokens.generateSessionId();
@@ -114,11 +115,11 @@ class AuthService {
          }
     }
 
-    public async forgotPassword(email:string):Promise<{message:string,resetCode:string}>{
+    public async forgotPassword(email:string):Promise<{message:string}>{
         try {
             const user = await  authModel.findOne({email:email});
             if(!user){
-               return {message:"User email hasn't been registered to our platform",resetCode:""};
+               return {message:"User email hasn't been registered to our platform"};
             }  
             try {
                 const uid = user.id.toString();
@@ -136,7 +137,36 @@ class AuthService {
             // Send email with reset tokens
             return {
                 message: 'If your email is registered, you will receive a password reset link',
-                resetCode: resetToken
+                // resetCode: resetToken
+            };
+        } catch (error) {
+         throw new Error(`Failed to process forgot password request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    public async sendOtp(email:string):Promise<{message:string}>{
+        try {
+            const user = await  authModel.findOne({email:email});
+            if(!user){
+               return {message:"User email hasn't been registered to our platform"};
+            }  
+            try {
+                const uid = user.id.toString();
+                const otp = await this.Otp.saveOtp(uid)
+                console.log(otp);
+                
+                const templates = Mailtemplates.forgotPasswordTemplate.replace("{{OTP_CODE}}", otp)
+              
+                await this.Mail.send(user.email,"Verify your Email",templates,"Verification")
+            } catch (error) {
+                console.log(`Email couldn't be sent to user ${error}`);
+            }
+            const tokenSession = tokens.generateSessionId();
+            const resetToken = tokens.generateAcessToken(user, tokenSession);
+            // Send email with reset tokens
+            return {
+                message: 'If your email is registered, you will receive a password reset link',
+                // resetCode: resetToken
             };
         } catch (error) {
          throw new Error(`Failed to process forgot password request: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -149,14 +179,14 @@ class AuthService {
             const id = user.id
             const verifyOtp = await this.Otp.veriryOtp(id,token)
             if(verifyOtp === true){
-                 throw new HttpException(400, "otp_expired", "OTP Code expired or invalid");
+                 return {messeage:"User OTP Code has been validated  you can now reset your password"};
             } 
         //    const tokenSession = tokens.generateSessionId();
         //    const  refreshSession = tokens.generateSessionId();  
         //    const accessToken = tokens.generateAcessToken(user,tokenSession);
         //    const refreshToken = tokens.generaterefreshToken(user,refreshSession); 
 
-           return {messeage:"User OTP Code has been validated  you can now reset your password"};
+           
 
         } catch (error) {
             throw new HttpException(400,"failed",`Failed to validate OTP ${error}`)

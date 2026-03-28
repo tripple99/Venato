@@ -8,7 +8,7 @@ export interface IProfile{
   username?:string,
   uid:Types.ObjectId,
   roles?:AuthRole,
-  userMarket?:AllowedMarkets,
+  userMarket?:Types.ObjectId,
 
 }
  

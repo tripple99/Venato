@@ -10,7 +10,11 @@ const profile = new Schema<IProfile>({
   username:{type:String},
   uid:{type:Schema.Types.ObjectId,ref:"Auth",required:true},
   roles:{type:String,enum:Object.values(AuthRole),default:AuthRole.User},
-  userMarket:{type:String,enum:Object.values(AllowedMarkets),default:AllowedMarkets.Default}
+  userMarket:{
+    type:Schema.Types.ObjectId,
+    ref:"Market",
+    default:AllowedMarkets.Default
+  }
 })
 
 

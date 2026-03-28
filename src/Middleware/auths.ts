@@ -2,10 +2,12 @@ import {Request,Response,NextFunction} from "express";
 import HttpException from "../exceptions/http.exception";
 import jwt from "jsonwebtoken"
 import authModel from "../resources/auths/auth.model"; // added import
+import { AuthRole } from "../resources/auths/auth.interface";
 
 export interface TokenPayload {
     id: string;
-    userRole: string;
+    userRole: AuthRole;
+    allowedMarkets:string[];
     email: string;
     fullname: string;
     accessToken: string;
@@ -20,54 +22,63 @@ declare global {
     }
 }
 
-export const authenticate = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
-    const bearerToken = req.headers.authorization;
-    if(!bearerToken || !bearerToken.startsWith('Bearer ')){
-        throw new HttpException(401,'error',"Unauthorized -tokeen not provided")
-    }
-    const token = bearerToken.split('Bearer ')[1].trim();
-    let payload:TokenPayload; 
-    try {
-      payload = jwt.verify(token ,process.env.ACCESS_TOKEN as jwt.Secret) as TokenPayload
-      req.user = payload 
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const bearerToken = req.headers.authorization;
 
-      // update activity on each authenticated request
-      try {
-        await authModel.findByIdAndUpdate(payload.id, {
-          $set: { isActive: true, lastActive: new Date() }
-        }).lean();
-      } catch (e) {
-        // non-fatal — continue request even if DB update fails
-        console.warn('Failed to update lastActive', e);
+  if (!bearerToken?.startsWith('Bearer ')) {
+    throw new HttpException(401, 'error', 'Unauthorized - token not provided');
+  }
+
+  const token = bearerToken.split(' ')[1];
+
+  try {
+    const secret = process.env.ACCESS_TOKEN;
+    if (!secret) throw new Error('ACCESS_TOKEN missing');
+
+    const payload = jwt.verify(token, secret) as TokenPayload;
+    req.user = payload;
+
+   await authModel.findOneAndUpdate(
+  {
+    _id: payload.id,
+    lastActive: { $lt: new Date(Date.now() - 5 * 60 * 1000) }
+  },
+  {
+    $set: {
+      isActive: true,
+      lastActive: new Date()
+    }
+  }
+)
+
+    next();
+  } catch {
+    throw new HttpException(401, 'error', 'Invalid or expired token');
+  }
+};
+
+export const authorize = (roles?: AuthRole[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      throw new HttpException(401, 'error', 'Unauthorized access');
+    }
+
+    if (roles?.length) {
+      const userRole = req.user.userRole.toLowerCase();
+
+      const allowed = roles
+        .map(role => role.toLowerCase())
+        .includes(userRole);
+
+      if (!allowed) {
+        throw new HttpException(403, 'error', 'Forbidden - insufficient permissions');
       }
-
-      next()
-    } catch (error) {
-        throw new HttpException(500,'error',`server error ${error}` )
     }
-}
 
-export const authorize = (roles?:string[])=>{
-    return (req:Request,res:Response,next:NextFunction)=>{
-        authenticate(req,res,()=>{
-             if(!req.user){
-                throw new HttpException(401,'error',"Unauthorized access ❌❌")
-             }
-             if(roles && roles.length > 0){
-                
-                const userRole  = req.user.userRole.toLowerCase();
-                const hasRequiredRole = roles.some(role =>
-                    role.toLowerCase() === userRole
-                ); 
-               
-                
-                if (!hasRequiredRole) {
-                    return next(new HttpException(403, 'error',
-                        `Forbidden - You do not have the required role. You have ${req.user.userRole} but need one of ${roles.join(', ')}`
-                    ));
-                }
-             }
-          return next();
-        })
-    }
-}
+    next();
+  };
+};

@@ -252,10 +252,10 @@ private async initializeErrorHandling():Promise<void>{
         // Check URL and user agent for suspicious patterns
         if (blockedPatterns.some(pattern => pattern.test(url) || pattern.test(userAgent))) {
             console.log(`Blocked suspicious request: ${req.method} ${req.originalUrl}`);
-            // return res.status(403).json({
-            //     status: "error",
-            //     message: "Request blocked by security policy"
-            // });
+            return res.status(403).json({
+                status: "error",
+                message: "Request blocked by security policy"
+            });
           
         }
 

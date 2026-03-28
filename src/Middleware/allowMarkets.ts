@@ -17,28 +17,50 @@ export interface IMarket {
 declare global {
   namespace Express{
     interface Request{
-      markets?:string
+      markets?:string[],
     }
   }
 }
 
 
 
-const allowedMarket = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
-   try {
-       if(!req.user)throw new HttpException(401,"Unauthorized Access","Authentication required");
-       const user = await authModel.findOne({email:req.user.email});
-       if(user?.userRole !== AuthRole.Admin)  throw new HttpException(401,"Unauthorized Access",`User doesn't have the required role : ${AuthRole.Admin}`);
-       if(!user?.allowedMarkets) throw new HttpException(404,"Not found","User has no assigned market");
-      //  const collection =  mongoose.connection.collection("markets");
-       const market = await marketModel.findOne({name:user.allowedMarkets}).lean();
-       if(!market) throw new HttpException(404,"Not found","User market not found");
-       const marketId = market._id;
-       req.markets = marketId.toString(); 
-       next();
-   } catch (error) {
-     throw new HttpException(404,"failed",`User doesn't have access to this market`)
-   }
-}  
+const allowedMarket = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        // 1. Ensure user is authenticated (should be handled by 'authenticate' middleware)
+        if (!req.user) {
+            return next(new HttpException(401, "Unauthenticated", "No user found in request"));
+        }
+
+        // 2. Role Check: Only Admins are subject to market-scoping
+        // (Super Admins usually bypass this or have their own logic)
+        if (req.user.userRole !== AuthRole.Admin) {
+            return next(new HttpException(403, "Forbidden", "Access restricted to Administrators"));
+        }
+
+        // 3. Extract the market the user is trying to access
+        const targetMarketId = req.body.marketId || req.params.marketId || req.query.marketId;
+
+        if (!targetMarketId) {
+            return next(new HttpException(400, "Bad Request", "Market ID is required for this operation"));
+        }
+
+        // 4. Permission Check: Compare target to user's allowedMarkets array
+        // We use .some() and .toString() to ensure ObjectId comparison works correctly
+        const hasAccess = req.user.allowedMarkets.some(
+            (id: any) => id.toString() === targetMarketId.toString()
+        );
+
+        if (!hasAccess) {
+            return next(new HttpException(403, "Forbidden", "You do not have permission to manage this market"));
+        }
+
+        // 5. Attach allowed markets to request for use in downstream controllers
+        req.markets = req.user.allowedMarkets; 
+        
+        next();
+    } catch (error) {
+        next(new HttpException(500, "Internal Server Error", "Error verifying market access"));
+    }
+};
 
 export default allowedMarket;

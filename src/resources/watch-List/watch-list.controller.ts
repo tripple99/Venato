@@ -34,7 +34,9 @@ class WatchListControllers implements GlobalControllers{
   }
   private getAll = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
      try {
-       const result =await this.watchList.getAll();
+       const user = req.user
+       if(!user) throw new HttpException(404,"Not found","User not found")
+       const result =await this.watchList.getAll(user.id);
        res.status(201).json({
         status:"Success",
         message:"All Products listed successfully",

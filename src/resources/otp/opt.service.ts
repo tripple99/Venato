@@ -26,7 +26,7 @@ class OtpService{
     const otpVerify = await otpModel.findOne({uid,otp})
     if(!otpVerify) return false;
     if(otpVerify.isVerified) return false
-    if(otpVerify.expiresAt >  new Date()) return false
+    if(otpVerify.expiresAt <  new Date()) return false
 
     otpVerify.isVerified = true
     await otpVerify.save();

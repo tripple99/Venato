@@ -5,5 +5,6 @@ export interface WatchList extends Document{
   user:Types.ObjectId
   product:Types.ObjectId
   createdAt: Date;
+  updatedAt: Date;
 }
 

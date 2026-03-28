@@ -26,6 +26,7 @@ class ProfileController implements GlobalController{
    private getProfile = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
       const user = req.user
+      console.log(user)
       if(!user) throw new HttpException(404,"Not found","User not found")
       const result = await this.profile.getProfile(user.id)
       res.status(200).json({
@@ -40,6 +41,9 @@ class ProfileController implements GlobalController{
    private update = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
       const uid = req.params.id
+      const user = req.user
+      if(!user) throw new HttpException(404,"Not found","User not found")
+      if(uid !== user.id) throw new HttpException(403,"Forbidden","You are not authorized to update this profile")
       const result = await this.profile.updateProfile(uid,req.body)
       res.status(200).json({
         status:"Success",

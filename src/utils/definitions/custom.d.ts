@@ -10,7 +10,7 @@ declare global {
   
       export interface Request {
         user?: TokenPayload; // Use the TokenPayload interface from auth.middleware
-        market:string;
+        market:string[];
       }
     }
   }

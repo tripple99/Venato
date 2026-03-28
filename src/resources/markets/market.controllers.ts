@@ -18,7 +18,7 @@ class MarketController implements GlobalController{
 
    private intiailizedRoutes():void{
      this.router.get('/',[authenticate,authorize([AuthRole.superAdmin])],this.fetchAllMarket)
-     this.router.get('/',[authenticate,authorize([AuthRole.superAdmin])],this.fetchById)
+     this.router.get('/:id',[authenticate,authorize([AuthRole.superAdmin])],this.fetchById)
      this.router.post("/",[authenticate,authorize([AuthRole.superAdmin])],schemaValidator(validator.createMarket),this.createMarket);
        
    } 
@@ -39,7 +39,8 @@ class MarketController implements GlobalController{
    }
  private fetchAllMarket = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
   try {
-    const market = await this.marketService.fetchAll()
+    const query = req.query
+    const market = await this.marketService.fetchAll(query)
     res.status(200).json({
       status:"Success",
       mmessage:"Market data fetched successfully",

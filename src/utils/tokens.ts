@@ -69,7 +69,7 @@ export const verifyRefreshToken = async (token:string):Promise<string | jwt.JwtP
         return decoded
     } catch (error) {
         throw error
-    }    
+    }       
 }
 
 

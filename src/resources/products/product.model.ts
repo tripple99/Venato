@@ -20,7 +20,7 @@ const productSchema = new Schema<IMarketProduct>({
   },
    market: {
     type: Schema.Types.ObjectId,
-    ref: 'Market', // 👈 reference to the Market model
+    ref: 'Markets',
     required: true
   },
   priceHistory:[
@@ -28,7 +28,17 @@ const productSchema = new Schema<IMarketProduct>({
       amount:Number,
       date:{type:Date,default:Date.now}
     }
-  ]
+  ],
+  createdBy:{
+    type:Schema.Types.ObjectId,
+    ref:'Auth',
+    required:true
+  },
+  updatedBy:{
+    type:Schema.Types.ObjectId,
+    ref:'Auth',
+    required:true
+  }
 })
 
 productSchema.index({ name: 1, market: 1 }, { unique: true });

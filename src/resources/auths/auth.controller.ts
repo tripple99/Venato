@@ -21,8 +21,8 @@ class AuthControllers implements GlobalController{
         this.router.post('/login',schemaValidator(validator.login),this.login),
         this.router.post('/refresh',schemaValidator(validator.refreshToken),this.refreshToken),
         this.router.get('/logout',authenticate,schemaValidator(validator.refreshToken),this.logout),
-        this.router.post("/forgot-password",authenticate,schemaValidator(validator.forgotPassword),this.forgotPassword)
-        this.router.post("/validate-Otp",authenticate,schemaValidator(validator.validateOtp),this.validateOtp)
+        this.router.post("/forgot-password",schemaValidator(validator.forgotPassword),this.forgotPassword)
+        this.router.post("/validate-Otp",schemaValidator(validator.validateOtp),this.validateOtp)
         this.router.patch("/reset-password",authenticate,schemaValidator(validator.updatePassword),this.resetPassword)
      }
 
@@ -41,11 +41,12 @@ class AuthControllers implements GlobalController{
      } 
      private login = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
       try {
-          const {email,password} = req.body;       
+          const {email,password} = req.body; 
+                
           const {accessToken,refreshToken} = await this.authService.login(email,password);
           res.status(200).json({
               status:"Success",
-              message:"User Registered Successfully",
+              message:"User Logged in Successfully",
               payload:{accessToken,refreshToken}
           }) 
       } catch (error) {
@@ -74,6 +75,20 @@ class AuthControllers implements GlobalController{
         res.status(200).json({
           status:"Success",
           message:"Email send successfully",
+          payload:data
+        })
+    } catch (error) {
+        next(error)
+    }
+   }
+
+   private  sendOtp = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
+    try {
+        const {email} = req.body;
+        const data = await this.authService.sendOtp(email);
+        res.status(200).json({
+          status:"Success",
+          message:"Otp has been successfully sent",
           payload:data
         })
     } catch (error) {

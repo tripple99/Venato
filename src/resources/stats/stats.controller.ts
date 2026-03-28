@@ -16,14 +16,16 @@ class StatsController implements GlobalController {
     private initializeRoutes(): void {
         this.router.get(
             "/",
-            [authenticate, authorize([AuthRole.Admin, AuthRole.superAdmin])],
+            [authenticate, authorize([AuthRole.Admin, AuthRole.superAdmin,AuthRole.User])],
             this.getStats
         );
     }
 
     private getStats = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const stats = await StatsService.getStats();
+            const role = req.user.userRole
+            const userId = req.user.id
+            const stats = await StatsService.getStats(role,userId);
             res.status(200).json({ status: "success", message:"Stats has succefully fetched ",payload: stats });
         } catch (err) {
             next(err);

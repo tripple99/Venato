@@ -1,5 +1,5 @@
 import { Document } from "mongoose"; 
-
+import { Types } from "mongoose";
 
 
 export enum AuthRole{
@@ -28,7 +28,7 @@ export interface IAuth extends Document{
     email:string,
     password:string,
     userRole:AuthRole,
-    allowedMarkets:AllowedMarkets,
+    allowedMarkets:Types.ObjectId[],
     sessionToken:string | null,
     refreshToken:string,
     createdAt:Date,
@@ -36,4 +36,5 @@ export interface IAuth extends Document{
     isValidPassword(password:string):Promise <Error | boolean>,
     isActive?: boolean;
     lastActive?: Date;
+    isVerified?:boolean;
 }
