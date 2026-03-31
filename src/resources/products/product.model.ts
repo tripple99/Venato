@@ -23,12 +23,12 @@ const productSchema = new Schema<IMarketProduct>({
     ref: 'Markets',
     required: true
   },
-  priceHistory:[
-    {
-      amount:Number,
-      date:{type:Date,default:Date.now}
-    }
-  ],
+  // priceHistory:[
+  //   {
+  //     amount:Number,
+  //     date:{type:Date,default:Date.now}
+  //   }
+  // ],
   createdBy:{
     type:Schema.Types.ObjectId,
     ref:'Auth',

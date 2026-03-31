@@ -1,0 +1,5 @@
+$kind: http-request
+name: Add to Watch List
+method: POST
+url: '{{baseUrl}}/watch-list/{{productId}}'
+order: 1000

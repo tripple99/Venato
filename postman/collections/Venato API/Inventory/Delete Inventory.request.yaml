@@ -1,0 +1,17 @@
+$kind: http-request
+name: Delete Inventory
+method: DELETE
+url: '{{baseUrl}}/inventory/{{inventoryId}}'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "productId": "{{productId}}",
+      "quantity": 10,
+      "unit": "kg",
+      "preferredMarket": "Charanchi"
+    }

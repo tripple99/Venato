@@ -1,0 +1,7 @@
+$kind: http-request
+name: Filter Products by Price
+method: GET
+url: '{{baseUrl}}/product/filter'
+order: 2000
+auth:
+  type: noauth

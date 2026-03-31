@@ -1,5 +1,5 @@
 import { Types,Schema,model } from "mongoose";
-import { IPriceSnapshot } from "./price.interface";
+import { IPriceSnapshot, Source } from "./price.interface";
 
 
 const priceSnapshotSchema = new Schema<IPriceSnapshot>({
@@ -16,6 +16,11 @@ const priceSnapshotSchema = new Schema<IPriceSnapshot>({
     price:{
         type:Number,
         required:true
+    },
+    source:{
+        type:String,
+        enum:Source,
+        default:Source.Created
     },
     timestamp:{
         type:Date,

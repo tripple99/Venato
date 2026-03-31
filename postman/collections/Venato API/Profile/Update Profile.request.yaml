@@ -1,0 +1,15 @@
+$kind: http-request
+name: Update Profile
+method: PATCH
+url: '{{baseUrl}}/profile/{{userId}}'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "fullname": "John Doe Updated",
+      "username": "johndoe"
+    }

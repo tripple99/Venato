@@ -20,10 +20,11 @@ class AuthControllers implements GlobalController{
         this.router.post('/',schemaValidator(validator.register),this.register),
         this.router.post('/login',schemaValidator(validator.login),this.login),
         this.router.post('/refresh',schemaValidator(validator.refreshToken),this.refreshToken),
-        this.router.get('/logout',authenticate,schemaValidator(validator.refreshToken),this.logout),
+        this.router.get('/logout',authenticate,this.logout),
         this.router.post("/forgot-password",schemaValidator(validator.forgotPassword),this.forgotPassword)
         this.router.post("/validate-Otp",schemaValidator(validator.validateOtp),this.validateOtp)
         this.router.patch("/reset-password",authenticate,schemaValidator(validator.updatePassword),this.resetPassword)
+        this.router.post("/resend-otp",schemaValidator(validator.resendOtp),this.resendOtp)
      }
 
      private register = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
@@ -82,10 +83,10 @@ class AuthControllers implements GlobalController{
     }
    }
 
-   private  sendOtp = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
+   private  resendOtp = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-        const {email} = req.body;
-        const data = await this.authService.sendOtp(email);
+        const {email,purpose} = req.body;
+        const data = await this.authService.sendOtp(email,purpose);
         res.status(200).json({
           status:"Success",
           message:"Otp has been successfully sent",
@@ -97,8 +98,10 @@ class AuthControllers implements GlobalController{
    }
    private validateOtp = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-        const {email,otp} = req.body
-        const result = await this.authService.validateOtp(email,otp);
+        console.log(req.body)
+        const {email,otp,purpose} = req.body
+        // console.log(email,otp,purpose)
+        const result = await this.authService.validateOtp(email,otp,purpose);
         res.status(200).json({
             status:"Success",
             message:"Opt has been successfully validated",

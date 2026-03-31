@@ -41,6 +41,7 @@ export const authenticate = async (
 
     const payload = jwt.verify(token, secret) as TokenPayload;
     req.user = payload;
+    req.markets = payload.allowedMarkets
 
    await authModel.findOneAndUpdate(
   {

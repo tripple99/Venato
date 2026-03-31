@@ -1,0 +1,5 @@
+$kind: http-request
+name: Resend-otp
+url: ""
+method: GET
+order: 2702104658447087

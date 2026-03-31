@@ -13,6 +13,7 @@ import StatsController from './resources/stats/stats.controller';
 import ProfileController from  './resources/profile/profile.controller';
 import WatchListControllers from './resources/watch-List/watch-list.controller';
 import InventoryController from './inventory/inventory.controller';
+import AlertController from './alert/alert.controller';
 
 
   
@@ -64,6 +65,7 @@ async function startApp() {
                     new ProfileController(),
                     new WatchListControllers(),
                     new InventoryController(),
+                    new AlertController(),
                 ], 
                 port,
             )

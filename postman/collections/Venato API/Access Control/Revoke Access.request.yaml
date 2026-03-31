@@ -1,0 +1,15 @@
+$kind: http-request
+name: Revoke Access
+method: PUT
+url: '{{baseUrl}}/access/revoke/{{userId}}'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "userRole": "user",
+      "allowedMarkets": ""
+    }

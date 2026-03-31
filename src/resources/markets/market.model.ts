@@ -15,10 +15,9 @@ const locationSchema = new Schema<ILocation>({
 
 
 const marketSchema = new Schema<IMarketData>({
-   name:{type:String,required:true,unique:true,enum:Object.values(Market)},
-   
-   currency:{type:String,required:true},
-   location:{type:locationSchema,required:true},
+    name:{type:String,required:true,unique:true},
+    currency:{type:String,required:true},
+    location:{type:locationSchema,required:true},
 
 })
 

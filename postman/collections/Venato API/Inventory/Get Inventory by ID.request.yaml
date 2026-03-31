@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get Inventory by ID
+method: GET
+url: '{{baseUrl}}/inventory/{{inventoryId}}'
+order: 3000

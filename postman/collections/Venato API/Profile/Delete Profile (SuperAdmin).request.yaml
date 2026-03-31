@@ -1,0 +1,5 @@
+$kind: http-request
+name: Delete Profile (SuperAdmin)
+method: DELETE
+url: '{{baseUrl}}/profile/{{userId}}'
+order: 3000

@@ -19,6 +19,7 @@ export const generateAcessToken = (user:IAuth,sessionId:string):string=>{
                 fullname:user.fullname,
                 email:user.email,
                 userRole:user.userRole,
+                allowedMarkets:user.allowedMarkets?.map(id => id.toString()),
                 id:user._id,
                 sessionId
             },
@@ -36,6 +37,7 @@ export const generaterefreshToken = (user:IAuth,sessionId:string):string=>{
                   fullname:user.fullname,
                   email:user.email,
                   userRole:user.userRole,
+                  allowedMarkets:user.allowedMarkets?.map(id => id.toString()),
                   id:user._id,
                   sessionId
               },

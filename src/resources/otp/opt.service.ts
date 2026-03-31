@@ -1,5 +1,6 @@
 import {generate} from "otp-generator"
 import otpModel from "./otp.model"
+import { OtpPurpose } from "./opt.protocol";
 
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
@@ -14,16 +15,18 @@ class OtpService{
     });
     return otp;
   }
-  public async saveOtp(uid:string):Promise<string>{
+  public async saveOtp(uid:string,purpose:OtpPurpose):Promise<string>{
     const otp = await this.generateOtp();
     const expiresAt =  new Date(Date.now() + TEN_MINUTES_MS);
-    const optDocument = await otpModel.create({uid,otp,expiresAt});
+    const optDocument = await otpModel.create({uid,otp,expiresAt,purpose:purpose});
     optDocument.save();
     return optDocument.otp;
   }
 
   public async veriryOtp(uid:string,otp:string,):Promise<boolean>{
+    console.log(uid,otp)
     const otpVerify = await otpModel.findOne({uid,otp})
+    console.log(otpVerify)
     if(!otpVerify) return false;
     if(otpVerify.isVerified) return false
     if(otpVerify.expiresAt <  new Date()) return false

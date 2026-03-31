@@ -1,52 +1,95 @@
-import { Request,Response,NextFunction, Router } from "express";
+import { Request, Response, NextFunction, Router } from "express";
 import GlobalControllers from "../../controllers/globalControllers";
 import AccessControlService from "./access-control.service";
-import { authenticate,authorize } from "../../Middleware/auths";
+import { authenticate, authorize } from "../../Middleware/auths";
 import { AuthRole } from "../auths/auth.interface";
 import schemaValidator from "../../Middleware/schema-validation.middlware";
-import validate from './access-control.validator'
+import validate from "./access-control.validator";
 
-
-
-
-class AccessController implements GlobalControllers{
+class AccessController implements GlobalControllers {
   public path = "access";
-  public router =  Router();
-  private accessService = new AccessControlService()
+  public router = Router();
+  private accessService = new AccessControlService();
 
-  constructor(){
+  constructor() {
     this.initializeController();
   }
 
-  private initializeController():void{
-     this.router.put('/:id',[authenticate,authorize([AuthRole.superAdmin])],schemaValidator(validate.grantAccess),this.grantUserAccess)
-     this.router.put('/revoke/:id',[authenticate,authorize([AuthRole.superAdmin])],schemaValidator(validate.grantAccess),this.revokeUserAccess)   
+  private initializeController(): void {
+    this.router.patch(
+      "/:id/:marketId",
+      [authenticate, authorize([AuthRole.superAdmin])],
+     
+      this.grantMarketAccess,
+    );
+    this.router.patch(
+      "/revoke/:id/:marketId",
+      [authenticate, authorize([AuthRole.superAdmin])],
+      schemaValidator(validate.grantAccess),
+      this.revokeUserAccess,
+    );
+    this.router.post(
+      "/",
+      [authenticate, authorize([AuthRole.superAdmin])],
+      schemaValidator(validate.grantAccess),
+      this.grantUserRole,
+    );
   }
 
-  private grantUserAccess = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
-     try {
-      const grant = await this.accessService.grantAccess(req.params.id,req.body);
-      res.status(200).json({
-         status:"Successful",
-         message:"User role and Market successfully created",
-         payload:grant
-      })
-     } catch (error) {
-      next(error)
-     }
-  } 
-  private revokeUserAccess = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
+  private grantUserRole = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
-       const revoke = await this.accessService.revokeAccess(req.params.id);
-       res.status(200).json({
-         status:"Success",
-         message:"User Access revoke successfully",
-         payload:revoke
-       })
+      const { role } = req.body;
+      const grant = await this.accessService.grantRole(req.params.id, role);
+      res.status(200).json({
+        status: "Successful",
+        message: "User role successfully granted",
+        payload: grant,
+      });
+    } catch (error) {}
+  };
+  private grantMarketAccess = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { id, marketId } = req.params;
+      const grant = await this.accessService.grantMarketAccess(
+        id,
+        marketId,
+        req.body,
+      );
+      res.status(200).json({
+        status: "Successful",
+        message: "User Market access successfully granted",
+        payload: grant,
+      });
     } catch (error) {
-      next(error)
+      next(error);
     }
-  }
+  };
+
+  private revokeUserAccess = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { id, marketId } = req.params;
+      const revoke = await this.accessService.revokeAccess(id);
+      res.status(200).json({
+        status: "Success",
+        message: "User Access revoke successfully",
+        payload: revoke,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export default AccessController;

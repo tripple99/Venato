@@ -1,0 +1,15 @@
+$kind: http-request
+name: Grant Access
+method: PUT
+url: '{{baseUrl}}/access/{{userId}}'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "userRole": "admin",
+      "allowedMarkets": "Charanchi"
+    }

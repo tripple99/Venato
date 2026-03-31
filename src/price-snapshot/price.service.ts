@@ -1,42 +1,54 @@
 import HttpException from "../exceptions/http.exception";
 import { IPriceSnapshot, IPriceSnapshotCreate } from "./price.interface";
 import priceSnapshotModel from "./price.model";
-import inventoryModel from "../inventory/inventory.model";
-import { Types } from "mongoose";
-
+import AlertService from "../alert/alert.service";
+import alertModel from "../alert/alert.model";
 
 class PriceSnapshotService{
+     private alertService:AlertService = new AlertService();
 
-
-    public async create(priceSnapshot:IPriceSnapshotCreate):Promise<IPriceSnapshot>{
-        try {
-            const createdPriceSnapshot = await priceSnapshotModel.create(priceSnapshot)
-            return createdPriceSnapshot
-        } catch (error) {
-            throw new HttpException(400,'failed',`failed to create price snapshot`)
-        }
-    }
+    public async create(priceSnapshot: IPriceSnapshotCreate): Promise<IPriceSnapshot> {
+    try {
+        const createdPriceSnapshot = await priceSnapshotModel.create(priceSnapshot);
+        await this.alertService.processMatchingAlerts(createdPriceSnapshot);
+        return createdPriceSnapshot;
+    } catch (error: any) {
+    throw new HttpException(
+        error.status || 500,
+        "failed",
+        error.message || "Failed to create price snapshot"
+    );
+}
+}
 
     public async fetch(priceSnapshot:IPriceSnapshot):Promise<IPriceSnapshot>{
         try {
-            const fetchedPriceSnapshot = await priceSnapshotModel.findById(priceSnapshot._id)
+            const fetchedPriceSnapshot = await priceSnapshotModel.findById(priceSnapshot.id)
             if(!fetchedPriceSnapshot)
                 throw new HttpException(404,'Not found','Price snapshot not found')
             return fetchedPriceSnapshot
-        } catch (error) {
-            throw new HttpException(400,'failed',`failed to fetch price snapshot`)
-        }
+        }catch (error: any) {
+    throw new HttpException(
+        error.status || 500,
+        "failed",
+        error.message || "Failed to create price snapshot"
+    );
+}
     }
 
-    public async update(priceSnapshot:IPriceSnapshot):Promise<IPriceSnapshot>{
+    public async update(id:string,priceSnapshot:Partial<IPriceSnapshot>):Promise<IPriceSnapshot>{
         try {
-            const updatedPriceSnapshot = await priceSnapshotModel.findByIdAndUpdate(priceSnapshot._id,priceSnapshot,{new:true})
+            const updatedPriceSnapshot = await priceSnapshotModel.findByIdAndUpdate(id,priceSnapshot,{new:true})
             if(!updatedPriceSnapshot)
                 throw new HttpException(404,'Not found','Price snapshot not found')
             return updatedPriceSnapshot
-        } catch (error) {
-            throw new HttpException(400,'failed',`failed to update price snapshot`)
-        }
+        } catch (error: any) {
+    throw new HttpException(
+        error.status || 500,
+        "failed",
+        error.message || "Failed to create price snapshot"
+    );
+}
     }
 
     // public async delete(priceSnapshot:IPriceSnapshot):Promise<IPriceSnapshot>{

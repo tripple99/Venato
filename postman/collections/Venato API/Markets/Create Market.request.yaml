@@ -1,0 +1,25 @@
+$kind: http-request
+name: Create Market
+method: POST
+url: '{{baseUrl}}/markets'
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Charanchi",
+      "currency": "NGN",
+      "location": {
+        "state": "Katsina",
+        "code": "CRC-LGA",
+        "LGA": "Charanchi",
+        "country": "Nigeria",
+        "cordinates": {
+          "latitude": "12.7167",
+          "longitude": "7.9167"
+        }
+      }
+    }

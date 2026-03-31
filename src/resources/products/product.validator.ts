@@ -14,7 +14,7 @@ const createProduct = z.object({
   category: z.nativeEnum(ICategory),
   quantityAvailable:z.number().min(0,{message:"Number can't be less than 0" }).optional(),
   description:z.string().min(1,"Descrition required").optional(),
-  // marketId:z.string().min(1,"Market ID required")
+  marketId:z.string().min(1,"Market ID required")
 
 }) 
 const updateProduct = z.object({
@@ -24,6 +24,7 @@ const updateProduct = z.object({
   category: z.nativeEnum(ICategory).optional(),
   quantityAvailable:z.number().min(0,{message:"Number can't be less than 0" }).optional(),
   description:z.string().min(1,"Descrition required").optional(),
+  marketId:z.string().min(1,"Market ID required")
 })
 
 

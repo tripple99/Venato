@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get Watch List
+method: GET
+url: '{{baseUrl}}/watch-list'
+order: 2000

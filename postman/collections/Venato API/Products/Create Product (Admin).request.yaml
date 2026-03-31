@@ -1,0 +1,19 @@
+$kind: http-request
+name: Create Product (Admin)
+method: POST
+url: '{{baseUrl}}/product'
+order: 6000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Rice",
+      "unit": "kg",
+      "price": 500,
+      "category": "Grains",
+      "quantityAvailable": 100,
+      "description": "Premium quality rice"
+    }

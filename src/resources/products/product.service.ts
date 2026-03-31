@@ -17,26 +17,38 @@ import {
 } from "../../utils/pagination";
 import PriceSnapshotService from "../../price-snapshot/price.service";
 import { Types, } from "mongoose";
+import { Source } from "../../price-snapshot/price.interface";
 class ProductService {
   private priceSnapShotService: PriceSnapshotService =
     new PriceSnapshotService();
 
   public async create(
-    marketId: string[],
     product: IMarketProduct,
   ): Promise<IMarketProduct> {
     try {
-      const market = marketId.map(async (id) => await marketModel.findById(id));
+      const marketId = product.market || (product as any).marketId;
+      const market = await marketModel.findById(marketId);
       if (!market)
         throw new HttpException(404, "Not found", "Market doesn't exist");
-      const isProduct = await productModel.findOne({ name: product.name });
+      const isProduct = await productModel.findOne({ name: product.name, market: marketId });
       if (isProduct)
-        throw new HttpException(404, "Not found", "Product already exist");
+        throw new HttpException(404, "Not found", "Product already exist in this market");
       const newProduct = new productModel({
         ...product,
-        market: marketId,
+        market: marketId
       });
-      return await newProduct.save();
+      const savedProduct = await newProduct.save();
+      if(savedProduct){
+        await this.priceSnapShotService.create({
+          productId: savedProduct.id,
+          marketId: market.id,
+          price: product.price,
+          source:Source.Created,
+          timestamp: new Date(),
+         
+        });
+      }
+      return savedProduct;
     } catch (error) {
       throw new HttpException(
         404,
@@ -203,13 +215,15 @@ class ProductService {
           }
           throw err;
         });
-
+       if(findMarket.price !== data.price){
         const priceSnapshot = await this.priceSnapShotService.create({
           productId: new mongoose.Types.ObjectId(uid),
           marketId: new mongoose.Types.ObjectId(market),
           price: data.price,
+          source:Source.Updated,
           timestamp: new Date(),
         });
+      }
 
       if (!updatedProduct)
         throw new HttpException(404, "Not found", "Product doesn't exist");
@@ -235,6 +249,10 @@ class ProductService {
           "Unauthorised",
           "User can't perform CRUD opertation to this product",
         );
+      const priceSnapshot = await this.priceSnapShotService.update(uid,{
+        source:Source.Deleted,
+        timestamp: new Date(),
+      });
       const deleteProd = await productModel.findByIdAndDelete(uid);
       if (!deleteProd)
         throw new HttpException(404, "Not found", "Product  doesn't exist");

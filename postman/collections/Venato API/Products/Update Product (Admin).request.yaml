@@ -1,0 +1,19 @@
+$kind: http-request
+name: Update Product (Admin)
+method: PATCH
+url: '{{baseUrl}}/product/{{productId}}'
+order: 7000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Rice",
+      "unit": "kg",
+      "price": 550,
+      "category": "Grains",
+      "quantityAvailable": 120,
+      "description": "Updated description"
+    }

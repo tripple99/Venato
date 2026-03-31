@@ -1,0 +1,7 @@
+$kind: http-request
+name: Get All Products (Public)
+method: GET
+url: '{{baseUrl}}/product/All'
+order: 1000
+auth:
+  type: noauth

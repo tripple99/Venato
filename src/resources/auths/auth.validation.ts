@@ -1,5 +1,5 @@
 import {z} from "zod" 
-
+import { OtpPurpose } from "../otp/opt.protocol"
 
 
 
@@ -36,7 +36,13 @@ const refreshToken = z.object({
 
 const validateOtp = z.object({
   email:z.string().email("Invalid email address"),
-  // otp:z.string().regex(/^[a-z0-9]{6}$/, "Must be 6 lowercase letters/numbers"),
+  purpose:z.enum([OtpPurpose.VERIFICATION,OtpPurpose.RESETPASSWORD,OtpPurpose.Registration]),
+  otp:z.string().regex(/^[a-z0-9]{6}$/, "Must be 6 lowercase letters/numbers"),
+})
+
+const resendOtp = z.object({
+  email:z.string().email("Invalid email address"),
+  purpose:z.enum([OtpPurpose.VERIFICATION,OtpPurpose.RESETPASSWORD,OtpPurpose.Registration])
 })
 
 const updatePassword = z.object({
@@ -55,5 +61,6 @@ export default {
    forgotPassword,
    validateOtp,
    updatePassword,
+   resendOtp,
 
 }

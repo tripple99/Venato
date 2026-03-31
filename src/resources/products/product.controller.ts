@@ -25,20 +25,22 @@ class ProductController implements GlobalController{
      this.router.get("/All",this.fetchAll)
      this.router.get("/filter",this.filterProduct) 
      this.router.get('/filter/market/:market',this.filterProductByMarket)
-     this.router.get('/',[authenticate,authorize([AuthRole.Admin]),allowedMarket],this.fetchProducts)
-     this.router.get("/:id",[authenticate,authorize([AuthRole.Admin]),allowedMarket,this.fetchProductById])
-     this.router.post("/",[authenticate,authorize([AuthRole.Admin]),allowedMarket],schemaValidator(validator.createProduct),this.createProduct)
-     this.router.patch("/:id",[authenticate,authorize([AuthRole.Admin]),allowedMarket],schemaValidator(validator.updateProduct),this.updateProduct);
-     this.router.delete("/:id",[authenticate,authorize([AuthRole.Admin]),allowedMarket],this.deleteProduct)
+     this.router.get('/',[authenticate,authorize([AuthRole.Admin])],this.fetchProducts)
+     this.router.get("/:id",[authenticate,authorize([AuthRole.Admin])],this.fetchProductById)
+     this.router.post("/",[authenticate,authorize([AuthRole.Admin]),allowedMarket('body')],schemaValidator(validator.createProduct),this.createProduct)
+     this.router.patch("/:id",[authenticate,authorize([AuthRole.Admin]),allowedMarket('body')],schemaValidator(validator.updateProduct),this.updateProduct);
+     this.router.delete("/:id",[authenticate,authorize([AuthRole.Admin]),allowedMarket('params')],this.deleteProduct)
    }
 
  
    private createProduct = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
       try {
-        const market = req.markets;
-        if(!market) throw new HttpException(404,"Not found","market id not found")
-        const data = req.body;
-        const createProduct = await this.Productservice.create(market,data)
+        const data = {
+           ...req.body,
+           createdBy: req.user?.id,
+           updatedBy: req.user?.id
+        };
+        const createProduct = await this.Productservice.create(data)
         res.status(200).json({
           status:"Sucess",
           message:"Product created successfully",
@@ -102,7 +104,14 @@ class ProductController implements GlobalController{
   }
   private fetchProductById = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-       const product = await this.Productservice.fetchProductById(req.params.id)
+        const product = await this.Productservice.fetchProductById(req.params.id);
+        
+        // Permission check: ensure product's market is in user's allowed markets
+        const allowed = req.markets?.some(m => m.toString() === product.market.toString());
+        if (!allowed) {
+            throw new HttpException(403, "Forbidden", "You do not have permission to view this product's market");
+        }
+
          res.status(200).json({
         status:"Success",
         message:"Products fetched successfully",

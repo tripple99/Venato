@@ -1,0 +1,7 @@
+$kind: http-request
+name: Filter Products by Market
+method: GET
+url: '{{baseUrl}}/product/filter/market/{{marketId}}'
+order: 3000
+auth:
+  type: noauth

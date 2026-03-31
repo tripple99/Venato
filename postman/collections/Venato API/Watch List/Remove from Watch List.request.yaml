@@ -1,0 +1,5 @@
+$kind: http-request
+name: Remove from Watch List
+method: DELETE
+url: '{{baseUrl}}/watch-list/{{productId}}'
+order: 3000
