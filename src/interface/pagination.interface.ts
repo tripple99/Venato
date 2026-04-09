@@ -37,7 +37,7 @@ export interface PaginationOptions {
 }
 
 export interface PaginationMetaData{
-   totalCount: number;
+  totalCount: number;
   currentPage: number;
   totalPages: number;
   hasNextPage: boolean;

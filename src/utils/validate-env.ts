@@ -10,6 +10,8 @@ export default function validateEnv(): void {
         // JWT_SECRET: str(),
         // REFRESH_TOKEN_SECRET: str(),
         SESSION_SECRET: str(),
+        QUEUE_DB_URI: str(),
+      
         // REDIS_CLIENT_URL: str(),
         // REDIS_CLIENT_PORT: str(),
 

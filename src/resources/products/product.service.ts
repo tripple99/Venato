@@ -38,6 +38,7 @@ class ProductService {
         market: marketId
       });
       const savedProduct = await newProduct.save();
+   
       if(savedProduct){
         await this.priceSnapShotService.create({
           productId: savedProduct.id,
@@ -171,7 +172,7 @@ class ProductService {
   public async getProducts(uid: any): Promise<IMarketProduct[]> {
     try {
       const products = await productModel.find({
-        market: new mongoose.Types.ObjectId(uid),
+        market: uid,
       }).lean();
       //  if(!products) throw new HttpException(401,"Not found","Product doesn't exist")
       return products;
@@ -186,18 +187,14 @@ class ProductService {
   public async update(
     uid: string,
     data: Partial<IMarketProduct>,
-    market: any,
   ): Promise<IMarketProduct> {
     try {
-      const findMarket = await productModel.findOne({
-        _id: uid,
-        market: market,
-      });
+      const findMarket = await productModel.findById(uid);
       if (!findMarket)
         throw new HttpException(
           404,
-          "Unauthorised",
-          "User can't perform CRUD opertation to this product",
+          "Not Found",
+          "Product doesn't exist",
         );
       const updatedProduct = await productModel
         .findByIdAndUpdate(
@@ -215,10 +212,12 @@ class ProductService {
           }
           throw err;
         });
+      
        if(findMarket.price !== data.price){
-        const priceSnapshot = await this.priceSnapShotService.create({
-          productId: new mongoose.Types.ObjectId(uid),
-          marketId: new mongoose.Types.ObjectId(market),
+      
+    const snapshot =   await this.priceSnapShotService.update(uid,{
+          productId:new Types.ObjectId(uid),
+          marketId: new Types.ObjectId(data.market),
           price: data.price,
           source:Source.Updated,
           timestamp: new Date(),
@@ -232,7 +231,7 @@ class ProductService {
       throw new HttpException(
         400,
         "failed",
-        `failed to update product `,
+        `failed to update product ${error}`,
       );
     }
   }

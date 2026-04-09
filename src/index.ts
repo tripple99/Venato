@@ -3,6 +3,7 @@ import 'dotenv/config';
 import App from "./app";
 import validateEnv from './utils/validate-env';
 import connectDB from './helpers/connect_mongodb';
+import { startAgenda } from './helpers/agenda';
 
 
 import AuthControllers from "./resources/auths/auth.controller"
@@ -14,6 +15,7 @@ import ProfileController from  './resources/profile/profile.controller';
 import WatchListControllers from './resources/watch-List/watch-list.controller';
 import InventoryController from './inventory/inventory.controller';
 import AlertController from './alert/alert.controller';
+import AnalyticsController from './analytics/analytics.controller';
 
 
   
@@ -53,6 +55,7 @@ try {
 async function startApp() {
     try {
       await connectDB()
+      await startAgenda();
 
         const port = Number(process.env.PORT) || 4000;
             const app = new App(
@@ -66,6 +69,7 @@ async function startApp() {
                     new WatchListControllers(),
                     new InventoryController(),
                     new AlertController(),
+                    new AnalyticsController(),
                 ], 
                 port,
             )

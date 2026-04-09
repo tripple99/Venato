@@ -58,7 +58,7 @@ class AuthControllers implements GlobalController{
    private refreshToken = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
         const {refreshToken} = req.body;
-        if(!refreshToken) throw new HttpException(404,"fialed","Token not found")
+        if(!refreshToken) throw new HttpException(404,"failed","Token not found")
         const result = await this.authService.refreshToken(refreshToken);
         res.status(200).json({
             status:"Success",

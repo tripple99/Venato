@@ -11,10 +11,12 @@ import { Types } from "mongoose";
 import { JwtPayload } from "jsonwebtoken";
 import { OtpPurpose } from "../otp/opt.protocol";
 import otpModel from "../otp/otp.model";
+import AgendaQueueService from "../mail/email.worker";
 class AuthService {
   private Mail = new NodeMailerService();
   private Otp = new OtpService();
   private Profile = new ProfileService();
+  private Agenda = new AgendaQueueService();
 
   public async register(
     data: IAuth,
@@ -51,7 +53,7 @@ class AuthService {
         OtpCode,
     );
     
-    await this.Mail.send(
+    await this.Agenda.sendNow(
       createUser.email,
       "Verify your Email",
       templates,
@@ -159,14 +161,14 @@ class AuthService {
       try {
         const uid = user.id.toString();
         const otp = await this.Otp.saveOtp(uid,OtpPurpose.RESETPASSWORD);
-        console.log(otp);
+       
 
         const templates = Mailtemplates.forgotPasswordTemplate.replace(
           "{{OTP_CODE}}",
           otp,
         );
 
-        await this.Mail.send(
+        await this.Agenda.sendNow(
           user.email,
           "Verify your Email",
           templates,
@@ -199,7 +201,7 @@ class AuthService {
       try {
         const uid = user.id.toString();
         const otp = await this.Otp.saveOtp(uid,purpose);
-        console.log(otp);
+      
         let templates:string;
         let subject:string;
         if(purpose === OtpPurpose.VERIFICATION){
@@ -224,7 +226,7 @@ class AuthService {
         //   );
         // }
         
-        await this.Mail.send(
+        await this.Agenda.sendNow(
           user.email,
           subject,
           templates,
@@ -367,11 +369,12 @@ class AuthService {
     user.fullname
   );
 
-  await this.Mail.send(
+  await this.Agenda.sendMail(
     user.email,
     "Welcome to Venato!",
     welcomeHtml,
-    "Welcome"
+    "Welcome",
+    "in 1 minute"
   );
 }
 }

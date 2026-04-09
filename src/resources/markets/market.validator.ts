@@ -1,5 +1,5 @@
 import {z} from "zod";
-import { Market,LgaCode,LGA } from "./market.interface";
+import { Market } from "./market.interface";
 
 
 const geolocationSchema = z.object({
@@ -10,8 +10,8 @@ const geolocationSchema = z.object({
 // ILocation
 const locationSchema = z.object({
   state: z.string(),
-  code: z.nativeEnum(LgaCode),
-  LGA: z.nativeEnum(LGA),
+  code: z.string(),
+  LGA: z.string(),
   country: z.string(),
   cordinates: geolocationSchema.optional(),
 });

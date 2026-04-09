@@ -4,6 +4,10 @@ import inventoryModel from "./inventory.model";
 import productModel from "../resources/products/product.model";
 import marketModel from "../resources/markets/market.model";
 import { Types } from "mongoose";
+import { PaginationQuery,PaginationResult,PaginationOptions } from "../interface/pagination.interface";
+import { paginationQuery } from "../utils/pagination";
+import { buildSortOptions } from "../utils/pagination";
+import { createPaginatedResult } from "../utils/pagination";
 class InventoryService {
   public async create(
     userId: string,
@@ -22,7 +26,11 @@ class InventoryService {
 
       // 2. Conditional Market Validation (Only check if preferredMarket is provided)
       if (inventory.preferredMarket) {
-        const market = await marketModel.findById(inventory.preferredMarket);
+        const marketId = inventory.preferredMarket.toString().trim();
+        if (!Types.ObjectId.isValid(marketId)) {
+          throw new HttpException(400, "Bad Request", "Invalid ID format");
+        }
+        const market = await marketModel.findOne({_id:marketId});
         if (!market) {
           throw new HttpException(
             404,
@@ -116,32 +124,47 @@ class InventoryService {
 
   public async delete(
     userId: string,
-    inventory: IInventory,
+    inventoryId: string,
   ): Promise<IInventory> {
     try {
-      const product = await productModel.findById(inventory.productId);
-      if (!product)
-        throw new HttpException(404, "Not found", "Product doesn't exist");
-      const market = await marketModel.findById(inventory.preferredMarket);
-      if (!market)
-        throw new HttpException(404, "Not found", "Market doesn't exist");
-      const deletedInventory = await inventoryModel.findByIdAndDelete(
-        inventory._id,
-      );
+      const deletedInventory = await inventoryModel.findOneAndDelete({
+        _id: inventoryId,
+        userId: userId,
+      });
       if (!deletedInventory)
-        throw new HttpException(404, "Not found", "Inventory doesn't exist");
+        throw new HttpException(
+          404,
+          "Not found",
+          "Inventory doesn't exist or access denied",
+        );
       return deletedInventory;
     } catch (error) {
       throw new HttpException(400, "failed", `failed to delete inventory`);
     }
   }
 
-  public async fetch(userId: string): Promise<IInventory[]> {
+  public async fetch(userId: string,query:any):Promise<PaginationResult<IInventory>> {
     try {
-      const inventories = await inventoryModel.find({ userId });
-      if (!inventories)
-        throw new HttpException(404, "Not found", "Inventory doesn't exist");
-      return inventories;
+      const pagination = paginationQuery(query);
+      const sortOptions = buildSortOptions(
+        pagination.sortBy,
+        pagination.sortOrder,
+      ); 
+      const [inventories, totalCount] = await Promise.all([
+        inventoryModel
+          .find({ userId }).populate("productId").populate("preferredMarket")
+          .sort(sortOptions)
+          .skip(pagination.skip)
+          .limit(pagination.limit)
+          .lean(),
+        inventoryModel.countDocuments({ userId }).lean(),
+      ]);
+      return createPaginatedResult(
+        inventories,
+        totalCount,
+        pagination.page,
+        pagination.limit,
+      );
     } catch (error) {
       throw new HttpException(400, "failed", `failed to fetch inventory`);
     }
@@ -152,23 +175,33 @@ class InventoryService {
     inventoryId: string,
   ): Promise<IInventory> {
     try {
-      const product = await productModel.findById(inventoryId);
-      if (!product)
-        throw new HttpException(404, "Not found", "Product doesn't exist");
-      const market = await marketModel.findById(inventoryId);
-      if (!market)
-        throw new HttpException(404, "Not found", "Market doesn't exist");
-      const inventory = await inventoryModel.findById(inventoryId);
+      const inventory = await inventoryModel.findOne({
+        _id: inventoryId,
+        userId: userId,
+      }).lean();
       if (!inventory)
-        throw new HttpException(404, "Not found", "Inventory doesn't exist");
+        throw new HttpException(
+          404,
+          "Not found",
+          "Inventory doesn't exist or access denied",
+        );
       return inventory;
     } catch (error) {
       throw new HttpException(400, "failed", `failed to fetch inventory`);
     }
   }
 
-      public async getPortfolioPerformance(userId: string) {
-    const portfolio = await inventoryModel.aggregate([
+  public async getPortfolioPerformance(userId: string,query:any):Promise<{
+    totalPortfolioValue: number;
+    holdings: PaginationResult<IInventory>;
+  }> {
+    const pagination = paginationQuery(query);
+    const sortOptions = buildSortOptions(
+      pagination.sortBy,
+      pagination.sortOrder,
+    ); 
+    const [inventories, totalCount] = await Promise.all([
+      inventoryModel.aggregate([
       // 1. Filter by current user
       { $match: { userId: new Types.ObjectId(userId) } },
 
@@ -178,8 +211,8 @@ class InventoryService {
           from: "products",
           localField: "productId",
           foreignField: "_id",
-          as: "productDetails"
-        }
+          as: "productDetails",
+        },
       },
       { $unwind: "$productDetails" },
 
@@ -193,22 +226,70 @@ class InventoryService {
             { $match: { $expr: { $eq: ["$productId", "$$prodId"] } } },
             { $sort: { timestamp: -1 } },
             { $skip: 1 }, // Skip the very latest (current) snapshot
-            { $limit: 1 } // Get the one immediately before it
+            { $limit: 1 }, // Get the one immediately before it
           ],
-          as: "previousSnapshot"
-        }
+          as: "previousSnapshot",
+        },
       },
-      { $unwind: { path: "$previousSnapshot", preserveNullAndEmptyArrays: true } },
+      {
+        $unwind: {
+          path: "$previousSnapshot",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
 
-      // 4. Calculate Values and Percentages
+      // 4. Multi-market comparison (find max and avg price for this product in OTHER markets)
+      {
+        $lookup: {
+          from: "pricesnapshots",
+          let: { prodId: "$productId", currMarket: "$preferredMarket" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$productId", "$$prodId"] },
+                    // Ignore null preferredMarket or match any alternative market if not specific
+                    { $ne: ["$marketId", { $ifNull: ["$$currMarket", null] }] },
+                  ],
+                },
+              },
+            },
+            { $sort: { timestamp: -1 } },
+            // distinct by marketId
+            {
+              $group: {
+                _id: "$marketId",
+                latestPrice: { $first: "$price" },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                avgOtherMarketPrice: { $avg: "$latestPrice" },
+                maxOtherMarketPrice: { $max: "$latestPrice" },
+              },
+            },
+          ],
+          as: "otherMarkets",
+        },
+      },
+      { $unwind: { path: "$otherMarkets", preserveNullAndEmptyArrays: true } },
+
+      // 5. Calculate Values and Percentages
       {
         $addFields: {
           currentValue: { $multiply: ["$quantity", "$productDetails.price"] },
-          previousPrice: { $ifNull: ["$previousSnapshot.price", "$productDetails.price"] },
-          priceDifference: { 
-            $subtract: ["$productDetails.price", { $ifNull: ["$previousSnapshot.price", "$productDetails.price"] }] 
-          }
-        }
+          previousPrice: {
+            $ifNull: ["$previousSnapshot.price", "$productDetails.price"],
+          },
+          priceDifference: {
+            $subtract: [
+              "$productDetails.price",
+              { $ifNull: ["$previousSnapshot.price", "$productDetails.price"] },
+            ],
+          },
+        },
       },
       {
         $addFields: {
@@ -216,13 +297,18 @@ class InventoryService {
             $cond: [
               { $eq: ["$previousPrice", 0] },
               0,
-              { $multiply: [{ $divide: ["$priceDifference", "$previousPrice"] }, 100] }
-            ]
-          }
-        }
+              {
+                $multiply: [
+                  { $divide: ["$priceDifference", "$previousPrice"] },
+                  100,
+                ],
+              },
+            ],
+          },
+        },
       },
 
-      // 5. Final Projection
+      // 6. Final Projection
       {
         $project: {
           productName: "$productDetails.name",
@@ -233,18 +319,31 @@ class InventoryService {
           currentValue: 1,
           percentageChange: { $round: ["$percentageChange", 2] },
           status: {
-            $cond: [{ $gt: ["$percentageChange", 0] }, "increased", "decreased"]
-          }
-        }
-      }
-    ]);
+            $cond: [
+              { $gt: ["$percentageChange", 0] },
+              "increased",
+              "decreased",
+            ],
+          },
+          otherMarketMaxPrice: "$otherMarkets.maxOtherMarketPrice",
+          otherMarketAvgPrice: {
+            $round: ["$otherMarkets.avgOtherMarketPrice", 2],
+          },
+        },
+      },
+    ]),
+    inventoryModel.countDocuments({ userId }).lean(),
+  ]);
 
     // Calculate Grand Totals
-    const totalPortfolioValue = portfolio.reduce((acc, item) => acc + item.currentValue, 0);
+    const totalPortfolioValue = inventories.reduce(
+      (acc, item) => acc + item.currentValue,
+      0,
+    );
 
     return {
       totalPortfolioValue,
-      holdings: portfolio
+      holdings: createPaginatedResult(inventories,totalCount,pagination.page,pagination.limit),
     };
   }
 }

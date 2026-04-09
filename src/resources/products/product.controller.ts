@@ -123,8 +123,8 @@ class ProductController implements GlobalController{
   }
    private updateProduct = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
       try {
-        const market = req.markets
-         const data = await this.Productservice.update(req.params.id,req.body,market)
+       
+         const data = await this.Productservice.update(req.params.id,req.body)
          res.status(200).json({
           status:"Success",
           message:"Product updated successfully",

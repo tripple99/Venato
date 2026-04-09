@@ -8,7 +8,7 @@ import AlertService from "./alert.service";
 import MarketService from "../resources/markets/market.service";
 import HttpException from "../exceptions/http.exception";
 class AlertController implements GlobalController{
-  public  path: string = "/alerts";
+  public  path: string = "alerts";
   public  router: Router = Router();
   private alertService = new AlertService();
   private marketService = new MarketService();
@@ -19,20 +19,23 @@ class AlertController implements GlobalController{
 
 
   private intiailizedRoutes():void{
-    this.router.post(this.path,[authenticate,schemaValidator(alertValidators.create)],this.createAlert);
-    this.router.get(this.path,[authenticate],this.getAlerts);
-    this.router.get(this.path + "/:id",[authenticate],this.getAlertById);
-    this.router.patch(this.path + "/:id",[authenticate,schemaValidator(alertValidators.updateAlert)],this.updateAlert);
-    this.router.delete(this.path + "/:id",[authenticate],this.deleteAlert);
+    this.router.post("/",[authenticate,schemaValidator(alertValidators.create)],this.createAlert);
+    this.router.get("/",[authenticate],this.getAlerts);
+    this.router.get("/suggest/:productId",[authenticate],this.suggestThresholds);
+    this.router.get("/:id",[authenticate],this.getAlertById);
+    this.router.patch("/:id",[authenticate,schemaValidator(alertValidators.updateAlert)],this.updateAlert);
+    this.router.delete("/:id",[authenticate],this.deleteAlert);
   }
 
 
   createAlert = async (req:Request,res:Response,next:NextFunction)=>{
     try {
-      const {productId,price,condition,marketId} = req.body
+      const {productId, marketId} = req.body
       const market = await this.marketService.fetchById(marketId);
       if(!market) throw new HttpException(404,"Not found","market not found")
-      const alert = await this.alertService.createAlert(req.body);
+      
+      const alertPayload = { ...req.body, user: req.user.id };
+      const alert = await this.alertService.createAlert(alertPayload);
       res.status(201).json({
         status:"success",
         message:"Alert created successfully",
@@ -45,7 +48,7 @@ class AlertController implements GlobalController{
 
   getAlerts = async (req:Request,res:Response,next:NextFunction)=>{
     try {
-      const alerts = await this.alertService.getAlerts();
+      const alerts = await this.alertService.getAlerts(req.user.id);
       res.status(200).json({
         status:"success",
         message:"Alerts fetched successfully",
@@ -58,7 +61,7 @@ class AlertController implements GlobalController{
 
   getAlertById = async (req:Request,res:Response,next:NextFunction)=>{
     try {
-      const alert = await this.alertService.getAlertById(req.params.id);
+      const alert = await this.alertService.getAlertById(req.params.id, req.user.id);
       res.status(200).json({
         status:"success",
         message:"Alert fetched successfully",
@@ -71,7 +74,7 @@ class AlertController implements GlobalController{
 
   updateAlert = async (req:Request,res:Response,next:NextFunction)=>{
     try {
-      const alert = await this.alertService.updateAlert(req.params.id,req.body);
+      const alert = await this.alertService.updateAlert(req.params.id, req.user.id, req.body);
       res.status(200).json({
         status:"success",
         message:"Alert updated successfully",
@@ -84,7 +87,7 @@ class AlertController implements GlobalController{
 
   deleteAlert = async (req:Request,res:Response,next:NextFunction)=>{
     try {
-      const alert = await this.alertService.deleteAlert(req.params.id);
+      const alert = await this.alertService.deleteAlert(req.params.id, req.user.id);
       res.status(200).json({
         status:"success",
         message:"Alert deleted successfully",
@@ -93,6 +96,14 @@ class AlertController implements GlobalController{
     } catch (error) {
       next(error);
     }
+  }
+
+  suggestThresholds = async (req:Request,res:Response,next:NextFunction)=>{
+    try {
+      const suggestions = await this.alertService.suggestThresholds(req.params.productId);
+      if (!suggestions) throw new HttpException(404, "Not found", "Not enough data to suggest thresholds");
+      res.status(200).json({ status: "success", payload: suggestions });
+    } catch (error) { next(error); }
   }
     
 }

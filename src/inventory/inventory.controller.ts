@@ -19,9 +19,24 @@ class InventoryController implements GlobalController{
    private initializeRoutes():void{
     this.router.post('/',[authenticate,schemaValidator(inventoryValidators.create)],this.create);
     this.router.patch('/:id',[authenticate,schemaValidator(inventoryValidators.update)],this.update);
-    this.router.delete('/:id',[authenticate,schemaValidator(inventoryValidators.deleteInventory)],this.delete);
-    this.router.get('/',[authenticate,schemaValidator(inventoryValidators.fetch)],this.fetch);
-    this.router.get('/:id',[authenticate,schemaValidator(inventoryValidators.fetchById)],this.fetchById);
+    this.router.delete('/:id',[authenticate],this.delete);
+    this.router.get('/',[authenticate],this.fetch);
+    this.router.get('/portfolio',[authenticate],this.getPortfolioInfo);
+    this.router.get('/:id',[authenticate],this.fetchById);
+   }
+
+   private getPortfolioInfo = async (req:Request, res:Response, next:NextFunction):Promise<void>=>{
+    try {
+       const query = req.query;
+        const portfolio = await this.inventoryService.getPortfolioPerformance(req.user.id,query);
+        res.status(200).json({
+          status: "Success",
+          message: "Portfolio data fetched successfully",
+          payload: portfolio
+        });
+    } catch (error) {
+        next(error);
+    }
    }
 
 
@@ -53,7 +68,7 @@ class InventoryController implements GlobalController{
 
    private delete = async (req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-        const inventory = await this.inventoryService.delete(req.user.id,req.body);
+        const inventory = await this.inventoryService.delete(req.user.id,req.params.id);
         res.status(200).json({
           status:"Success",
           message:"Inventory deleted successfully",
@@ -66,7 +81,8 @@ class InventoryController implements GlobalController{
 
    private fetch = async (req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-        const inventory = await this.inventoryService.fetch(req.user.id);
+       const query = req.query;
+        const inventory = await this.inventoryService.fetch(req.user.id,query);
         res.status(200).json({
           status:"Success",
           message:"Inventory fetched successfully",

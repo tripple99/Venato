@@ -3,7 +3,7 @@ import HttpException from "../../exceptions/http.exception";
 import WatchListService from "./watch-list.service";
 import {authenticate,authorize} from "../../Middleware/auths"
 import GlobalControllers from "../../controllers/globalControllers";
-
+import { paginationQuery } from "../../utils/pagination";
 
 class WatchListControllers implements GlobalControllers{
   public path  = "watch-list";
@@ -22,7 +22,7 @@ class WatchListControllers implements GlobalControllers{
 
   private create = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-       const list = await this.watchList.createList(req.user!,req.params.id) 
+       const list = await this.watchList.createList(req.user,req.params.id) 
        res.status(201).json({
         status:"Success",
         message:"Product added to watch list successfully",
@@ -36,7 +36,8 @@ class WatchListControllers implements GlobalControllers{
      try {
        const user = req.user
        if(!user) throw new HttpException(404,"Not found","User not found")
-       const result =await this.watchList.getAll(user.id);
+       const pagination = req.query
+       const result =await this.watchList.getAll(user.id,pagination);
        res.status(201).json({
         status:"Success",
         message:"All Products listed successfully",

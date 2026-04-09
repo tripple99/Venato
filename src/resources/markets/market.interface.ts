@@ -13,18 +13,18 @@ interface IGeolocation{
 }
 
 
-export enum LgaCode {
-  CHARANCHI = "CRC-LGA",
-  AJIWA = "BAT-LGA",
-  DAWANAU = "FGE-LGA",
-}
+// export enum LgaCode {
+//   CHARANCHI = "CRC-LGA",
+//   AJIWA = "BAT-LGA",
+//   DAWANAU = "FGE-LGA",
+// }
 
 
-export enum LGA{
-  CHARANCHI = "Charanchi",
-  AJIWA = "Batagarawa",
-  DAWANAU = "Fagge"
-}
+// export enum LGA{
+//   CHARANCHI = "Charanchi",
+//   AJIWA = "Batagarawa",
+//   DAWANAU = "Fagge"
+// }
 
 
 export interface ILocation{
@@ -39,4 +39,8 @@ export interface IMarketData{
   name:string;
   currency:string;
   location:ILocation;
+  isActive:boolean;
+  isDeleted:boolean;
+  createdAt:Date;
+  updatedAt:Date;
 }

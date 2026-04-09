@@ -38,7 +38,7 @@ class PriceSnapshotService{
 
     public async update(id:string,priceSnapshot:Partial<IPriceSnapshot>):Promise<IPriceSnapshot>{
         try {
-            const updatedPriceSnapshot = await priceSnapshotModel.findByIdAndUpdate(id,priceSnapshot,{new:true})
+            const updatedPriceSnapshot = await priceSnapshotModel.findOneAndUpdate({productId:id},priceSnapshot,{new:true})
             if(!updatedPriceSnapshot)
                 throw new HttpException(404,'Not found','Price snapshot not found')
             return updatedPriceSnapshot

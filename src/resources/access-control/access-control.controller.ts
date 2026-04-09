@@ -29,13 +29,35 @@ class AccessController implements GlobalControllers {
       this.revokeUserAccess,
     );
     this.router.post(
-      "/",
+      "/:id",
       [authenticate, authorize([AuthRole.superAdmin])],
       schemaValidator(validate.grantAccess),
       this.grantUserRole,
+    );  
+    this.router.get(
+      "/",
+      [authenticate, authorize([AuthRole.superAdmin])],
+      this.getAllUsers,
     );
+
   }
 
+  private getAllUsers = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const users = await this.accessService.getAllUsers(req.query);
+      res.status(200).json({
+        status: "Successful",
+        message: "Users fetched successfully",
+        payload: users,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
   private grantUserRole = async (
     req: Request,
     res: Response,
@@ -49,7 +71,9 @@ class AccessController implements GlobalControllers {
         message: "User role successfully granted",
         payload: grant,
       });
-    } catch (error) {}
+    } catch (error) {
+      next(error);
+    }
   };
   private grantMarketAccess = async (
     req: Request,

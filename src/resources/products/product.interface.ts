@@ -19,13 +19,12 @@ export enum ICategory{
   Livestock = "Livestock",
   RootsAndTubers = "Roots and Tubers",
   Fruits = "Fruit",
+  Spices = "Spices",
   Others = "Others"
 
+
 }
-interface PriceHistory{
-  amount: number;       // the price value
-  date: Date;  
-}
+
 export interface IMarketProduct {
   name: string;
   unit: IUnit;

@@ -5,7 +5,7 @@ node_modules/
 dist/
 build/
 out/
-
+postman/
 # Environment variables
 .env
 .env.local

@@ -20,7 +20,54 @@ import { PaginationResult } from "../../interface/pagination.interface";
     }
 
    }
+
+   public  async update(id:string,data:Partial<IMarketData>):Promise<IMarketData>{
+    try {
+      const market = await marketModel.findByIdAndUpdate(id,data,{new:true});
+      if(!market) throw new HttpException(404,"Not Found","Market doesn't exist ")
+      return market;
+    } catch (error) {
+      throw new HttpException(404,"failed","Failed to update market data ")
+    }
+   }
+
+   public async delete(id:string):Promise<IMarketData>{
+    try {
+      const market = await marketModel.findByIdAndUpdate(id,{isDeleted:true,isActive:false},{new:true});
+      if(!market) throw new HttpException(404,"Not Found","Market doesn't exist ")
+      return market;
+    } catch (error) {
+      throw new HttpException(404,"failed","Failed to delete market data ")
+    }
+   }
    public async fetchAll(query:any):Promise<PaginationResult<IMarketData>>{
+    try {
+      const pagination = paginationQuery(query);
+      const sortOptions = buildSortOptions(
+        pagination.sortBy,
+        pagination.sortOrder,
+      ); 
+      const [markets, totalCount] = await Promise.all([
+        marketModel
+          .find()
+          .sort(sortOptions)
+          .skip(pagination.skip)
+          .limit(pagination.limit)
+          .lean(),
+        marketModel.countDocuments().lean(),
+      ]);
+      return createPaginatedResult(
+        markets,
+        totalCount,
+        pagination.page,
+        pagination.limit,
+      );
+    } catch (error) {
+      throw new HttpException(404,"failed",`Failed to fetch market data `)
+    }
+   }
+
+      public async fetchAllPublic(query:any):Promise<PaginationResult<IMarketData>>{
     try {
       const pagination = paginationQuery(query);
       const sortOptions = buildSortOptions(

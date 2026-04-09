@@ -18,6 +18,7 @@ const inventorySchema = new Schema<IInventory>({
 
 inventorySchema.index({ userId: 1 });
 
+
 export default model<IInventory>("Inventory",inventorySchema)
 
 
