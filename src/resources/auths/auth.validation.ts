@@ -27,6 +27,7 @@ const login = z.object({
 
 const forgotPassword = z.object({
   email:z.string().email("Invalid email address"),
+  // purpose: z.literal(OtpPurpose.RESETPASSWORD),
 })
 const refreshToken = z.object({
   token:z.object({
@@ -52,6 +53,7 @@ password:z.string()
             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
             'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
         ),
+resetToken: z.string().min(1, 'Reset token is required'),
 })
 
 export default {

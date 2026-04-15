@@ -118,7 +118,7 @@ class ProductService {
       const [markets, totalCount] = await Promise.all([
         productModel
           .find({ market: filter })
-          .sort(sortOptions)
+          .sort({createdAt: -1})
           .skip(pagination.skip)
           .limit(pagination.limit)
           .lean(),
@@ -169,13 +169,27 @@ class ProductService {
       );
     }
   }
-  public async getProducts(uid: any): Promise<IMarketProduct[]> {
+  public async getProducts(uid: any,query:any={}): Promise<PaginationResult<IMarketProduct>> {
     try {
-      const products = await productModel.find({
+      const pagination = paginationQuery(query);
+      const sortOptions = buildSortOptions(
+        pagination.sortBy,
+        pagination.sortOrder,
+      ); 
+      const [products, totalCount] = await Promise.all([productModel.find({
         market: uid,
-      }).lean();
+      }).sort(sortOptions).populate("market","name location")
+          .skip(pagination.skip)
+          .limit(pagination.limit)
+          .lean(),
+        productModel.countDocuments({market: uid}).lean(),]);
       //  if(!products) throw new HttpException(401,"Not found","Product doesn't exist")
-      return products;
+      return createPaginatedResult(
+        products,
+        totalCount,
+        pagination.page,
+        pagination.limit,
+      );
     } catch (error) {
       throw new HttpException(
         400,
@@ -201,7 +215,7 @@ class ProductService {
           uid,
           { $set: { ...data } },
           { new: true, runValidators: true },
-        )
+        ).populate("market","name location")
         .catch((err) => {
           if (err.code === 11000) {
             throw new HttpException(
@@ -236,23 +250,24 @@ class ProductService {
     }
   }
 
-  public async delete(uid: string, market: any): Promise<IMarketProduct> {
+  public async delete(uid: string): Promise<IMarketProduct> {
     try {
-      const findMarket = await productModel.findOne({
-        _id: uid,
-        market: market,
-      });
-      if (!findMarket)
-        throw new HttpException(
-          404,
-          "Unauthorised",
-          "User can't perform CRUD opertation to this product",
-        );
+      // const findMarket = await productModel.findOne({
+      //   _id: uid,
+      //   market: market,
+      // });
+      // if (!findMarket)
+      //   throw new HttpException(
+      //     404,
+      //     "Unauthorised",
+      //     "User can't perform CRUD opertation to this product",
+      //   );
+      
       const priceSnapshot = await this.priceSnapShotService.update(uid,{
         source:Source.Deleted,
         timestamp: new Date(),
       });
-      const deleteProd = await productModel.findByIdAndDelete(uid);
+      const deleteProd = await productModel.findOneAndDelete({_id:uid});
       if (!deleteProd)
         throw new HttpException(404, "Not found", "Product  doesn't exist");
       return deleteProd;
@@ -260,7 +275,7 @@ class ProductService {
       throw new HttpException(
         400,
         "failed",
-        `failed to delete product`,
+        `failed to delete product ${error}`,
       );
     }
   }

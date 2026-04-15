@@ -25,7 +25,6 @@ class AccessController implements GlobalControllers {
     this.router.patch(
       "/revoke/:id/:marketId",
       [authenticate, authorize([AuthRole.superAdmin])],
-      schemaValidator(validate.grantAccess),
       this.revokeUserAccess,
     );
     this.router.post(
@@ -38,6 +37,11 @@ class AccessController implements GlobalControllers {
       "/",
       [authenticate, authorize([AuthRole.superAdmin])],
       this.getAllUsers,
+    );
+    this.router.patch(
+      "/verify/:id",
+      [authenticate, authorize([AuthRole.superAdmin])],
+      this.verifyUser,
     );
 
   }
@@ -64,12 +68,36 @@ class AccessController implements GlobalControllers {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const { role } = req.body;
-      const grant = await this.accessService.grantRole(req.params.id, role);
+      const { userRole } = req.body;
+      const adminId = (req as any).user?.id;
+      const ipAddress = req.ip;
+      const userAgent = req.get("User-Agent");
+      const grant = await this.accessService.grantRole(req.params.id, userRole, adminId, ipAddress, userAgent);
       res.status(200).json({
         status: "Successful",
         message: "User role successfully granted",
         payload: grant,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private verifyUser = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const adminId = (req as any).user?.id;
+      const ipAddress = req.ip;
+      const userAgent = req.get("User-Agent");
+      const verify = await this.accessService.verifyUser(id, adminId, ipAddress, userAgent);
+      res.status(200).json({
+        status: "Successful",
+        message: "User verified successfully",
+        payload: verify,
       });
     } catch (error) {
       next(error);
@@ -82,10 +110,15 @@ class AccessController implements GlobalControllers {
   ): Promise<void> => {
     try {
       const { id, marketId } = req.params;
+      const adminId = (req as any).user?.id;
+      const ipAddress = req.ip;
+      const userAgent = req.get("User-Agent");
       const grant = await this.accessService.grantMarketAccess(
         id,
         marketId,
-        req.body,
+        adminId,
+        ipAddress,
+        userAgent
       );
       res.status(200).json({
         status: "Successful",
@@ -103,8 +136,11 @@ class AccessController implements GlobalControllers {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const { id, marketId } = req.params;
-      const revoke = await this.accessService.revokeAccess(id);
+      const { id } = req.params;
+      const adminId = (req as any).user?.id;
+      const ipAddress = req.ip;
+      const userAgent = req.get("User-Agent");
+      const revoke = await this.accessService.revokeAccess(id, adminId, ipAddress, userAgent);
       res.status(200).json({
         status: "Success",
         message: "User Access revoke successfully",

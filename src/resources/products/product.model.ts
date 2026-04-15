@@ -39,7 +39,7 @@ const productSchema = new Schema<IMarketProduct>({
     ref:'Auth',
     required:true
   }
-})
+}, { timestamps: true })
 
 productSchema.index({ name: 1, market: 1 }, { unique: true });
 

@@ -15,6 +15,8 @@ import passport, { initialize } from "passport";
 import errorMiddleware from "./Middleware/errorHandling";
 import { setupMiddlewares } from "./helpers/express.config";
 import { agenda } from "./helpers/agenda";
+import morgan from "morgan";
+import logger from "./utils/logger";
 
 class App {
   public express: Application;
@@ -35,11 +37,12 @@ class App {
 
   public listen(): void {
     this.server = this.express.listen(this.port, () => {
-      console.log(`🖥️ App is listening on port : ${this.port} `);
+      logger.info(`🖥️ App is listening on port : ${this.port} `);
     });
     this.handleGracefullShutDown();
     this.handleAgendaShutDown();
   }
+
 
   private async initializeErrorHandling(): Promise<void> {
     this.express.use(errorMiddleware);
@@ -47,7 +50,7 @@ class App {
 
   private initializedRouteNotFound(): void {
     this.express.use((req: Request, res: Response) => {
-      console.log(`Route not found ${req.method} ${req.originalUrl}`);
+      logger.warn(`Route not found ${req.method} ${req.originalUrl}`);
       res.status(404).json({
         status: "Error",
         message: "Route not found",
@@ -56,7 +59,13 @@ class App {
     });
   }
 
+
   private intializeMiddleware(): void {
+    this.express.use(
+      morgan("combined", {
+        stream: { write: (message: string) => logger.info(message.trim()) },
+      }),
+    );
     setupMiddlewares(this.express);
     this.configureHelmet();
     // this.configurePassport();
@@ -72,7 +81,7 @@ class App {
   private configureResponseTime(): void {
     this.express.use(
       responseTime((req: Request, res: Response, time: number) => {
-        console.log(
+        logger.debug(
           `${req.method} from this URL : ${req.originalUrl} took ${time} in ms`,
         );
         res.setHeader("X-Response-Time", time);
@@ -111,7 +120,7 @@ class App {
         { font: "Cyberlarge" },
         (error: Error | null, data?: string) => {
           if (error) {
-            console.error(`Error generating ASCII Art`, error);
+            logger.error(`Error generating ASCII Art`, { error: error.message });
             const message = `Welcome to VENATO 🌽 🫘 🫛`;
             res.send(message.trim());
           }
@@ -125,7 +134,7 @@ class App {
       if (controllers?.path && controllers?.router) {
         this.express.use(`/api/${controllers.path}`, controllers.router);
       } else {
-        console.log(`error finding path or routes`);
+        logger.error(`error finding path or routes`);
       }
     });
   }
@@ -196,25 +205,25 @@ class App {
   }
   private setupMongooseErrorHandlers(): void {
     mongoose.connection.on("error", (err) => {
-      console.log(`MongoDB connection error: ${err.message}`);
+      logger.error(`MongoDB connection error: ${err.message}`);
     });
 
     mongoose.connection.on("disconnected", () => {
-      console.log("MongoDB disconnected");
+      logger.warn("MongoDB disconnected");
     });
 
     mongoose.connection.on("reconnected", () => {
-      console.log("MongoDB reconnected");
+      logger.info("MongoDB reconnected");
     });
 
     // Handle process termination
     process.on("SIGINT", async () => {
       try {
         await mongoose.connection.close();
-        console.log("MongoDB connection closed due to app termination");
+        logger.info("MongoDB connection closed due to app termination");
         process.exit(0);
       } catch (err) {
-        console.error("Error during MongoDB connection close", err);
+        logger.error("Error during MongoDB connection close", err);
         process.exit(1);
       }
     });
@@ -247,26 +256,26 @@ private handleProperMongoDBId(): void {
 }
   private handleGracefullShutDown(): void {
     const shutdown = async (signal: string) => {
-      console.log(`${signal} received. Closing application...`);
+      logger.info(`${signal} received. Closing application...`);
       try {
         await mongoose.connection.close();
-        console.log(`MongoDB connection close`);
+        logger.info(`MongoDB connection close`);
 
         if (this.server) {
           this.server.close(() => {
-            console.log("Express server closed");
+            logger.info("Express server closed");
           });
           process.exit(0);
         }
       } catch (error) {
-        console.log(`Error during shutdown : ${error} `);
+        logger.error(`Error during shutdown`, { error });
         process.exit(1);
       }
     };
     process.on("SIGTERM", () => shutdown("SIGTERM"));
     process.on("SIGINT", () => shutdown("SIGINT"));
     process.on("unhandledRejection", (reason, promise) => {
-      console.error("Unhandled Rejection:", { reason, promise });
+      logger.error("Unhandled Rejection:", { reason, promise });
     });
   }
 
@@ -274,10 +283,10 @@ private handleProperMongoDBId(): void {
     process.on("SIGTERM", async () => {
       try {
         await agenda.stop();
-        console.log("Agenda stopped");
+        logger.info("Agenda stopped");
         process.exit(0);
       } catch (err) {
-        console.error("Error during Agenda stop", err);
+        logger.error("Error during Agenda stop", { error: err });
         process.exit(1);
       }
     });
@@ -285,14 +294,15 @@ private handleProperMongoDBId(): void {
     process.on("SIGINT", async () => {
       try {
         await agenda.stop();
-        console.log("Agenda stopped");
+        logger.info("Agenda stopped");
         process.exit(0);
       } catch (err) {
-        console.error("Error during Agenda stop", err);
+        logger.error("Error during Agenda stop", { error: err });
         process.exit(1);
       }
     });
   }
+
 
   private configureWAF(): void {
     this.express.use((req: Request, res: Response, next: NextFunction) => {
@@ -324,7 +334,7 @@ private handleProperMongoDBId(): void {
           (pattern) => pattern.test(url) || pattern.test(userAgent),
         )
       ) {
-        console.log(
+        logger.warn(
           `Blocked suspicious request: ${req.method} ${req.originalUrl}`,
         );
         return res.status(403).json({

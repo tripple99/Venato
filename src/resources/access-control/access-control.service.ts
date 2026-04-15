@@ -4,6 +4,7 @@ import { IAuth, AllowedMarkets, AuthRole } from "../auths/auth.interface";
 import { IProfile } from "../profile/profile.interface";
 import profileModel from "../profile/profile.model";
 import marketModel from "../markets/market.model";
+import AuditLogService from "../audit-logs/audit-log.service";
 import {
   PaginationQuery,
   PaginationResult,
@@ -16,15 +17,19 @@ import {
 } from "../../utils/pagination";
 
 class AccessControlService {
+  private logs = new AuditLogService();
+
   public async grantMarketAccess(
     uid: string,
     marketId: string,
-    data: Partial<IAuth>,
-  ): Promise<IProfile> {
+    adminId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<IAuth> {
     try {
       const isVerified = await authModel.findById(uid);
-      if (!isVerified?.isVerified)
-        throw new HttpException(404, "Not found", "User doesn't exist");
+      if (!isVerified?.isVerified || isVerified.userRole !== AuthRole.Admin) throw new HttpException(400, "failed", "This user is not verified and is not an Administrator");
+       
       const user = await authModel.findByIdAndUpdate(
         uid,
         {
@@ -33,36 +38,56 @@ class AccessControlService {
           },
         },
         { new: true },
-      );
-      // const marketName = await marketModel.findById(marketId)
-      const profile = await profileModel
-        .findOneAndUpdate(
-          { uid: uid },
-          {
-            $set: {
-              userRole: data.userRole,
-              userMarket: marketId,
-            },
-          },
-          { new: true },
-        )
-        .populate("userMarket");
-      console.log(profile);
+      ).populate("allowedMarkets").select("-password -sessionToken -refreshToken ");
+      
       if (!user)
         throw new HttpException(404, "Not found", "User doesn't exist");
-      return profile;
-    } catch (error) {
-      throw new HttpException(404, "failed", `Failed to grant role `);
+
+      await profileModel.findOneAndUpdate(
+        { uid: uid },
+        {
+          $set: {
+            userMarket: marketId,
+          },
+        },
+        { new: true },
+      );
+
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "MARKET_ACCESS_GRANTED",
+        entityType: AuthRole.User,
+        entityId: user._id,
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: uid, marketId }
+      });
+
+      return user;
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "MARKET_ACCESS_GRANTED",
+        entityType: AuthRole.User,
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: uid, marketId, error: error.message }
+      });
+      throw new HttpException(400, "failed", `Failed to grant market access `);
     }
   }
 
-  public async grantRole(uid: string, role: AuthRole): Promise<IProfile> {
+  public async grantRole(uid: string, role: AuthRole, adminId?: string, ipAddress?: string, userAgent?: string): Promise<IAuth> {
     try {
       const isVerified = await authModel.findById(uid);
       if (!isVerified?.isVerified)
-        throw new HttpException(404, "Not found", "User doesn't exist");
-      const user = await authModel
-        .findByIdAndUpdate(
+        throw new HttpException(400, "failed", "User is not verified");
+      
+      const user = await authModel.findByIdAndUpdate(
           uid,
           {
             $set: {
@@ -70,38 +95,99 @@ class AccessControlService {
             },
           },
           { new: true },
-        )
+        ).populate("allowedMarkets").select("-password -sessionToken -refreshToken ")
         .lean();
-      const profile = await profileModel
-        .findOneAndUpdate(
+
+      if (!user)
+        throw new HttpException(404, "Not found", "User doesn't exist");
+
+      await profileModel.findOneAndUpdate(
           { uid: uid },
           {
             $set: {
-              userRole: role,
+              roles: role,
             },
           },
           { new: true },
-        )
-        .lean();
+        );
 
-      return profile;
-    } catch (error) {
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "ROLE_GRANTED",
+        entityType: AuthRole.User,
+        entityId: (user as any)._id,
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: uid, role }
+      });
+
+      return user as any;
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "ROLE_GRANTED",
+        entityType: AuthRole.User,
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: uid, role, error: error.message }
+      });
       throw new HttpException(
-        error.status,
+        error.status || 400,
         `${error}`,
         `Failed to grant role `,
       );
     }
   }
 
-  public async revokeAccess(uid: string): Promise<IAuth> {
+  public async verifyUser(uid: string, adminId?: string, ipAddress?: string, userAgent?: string): Promise<IAuth> {
+    try {
+      const user = await authModel.findById(uid);
+      if (!user)
+        throw new HttpException(404, "Not found", "User doesn't exist");
+      user.isVerified = true;
+      await user.save();
+
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "USER_VERIFIED",
+        entityType: AuthRole.User,
+        entityId: user._id,
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: uid }
+      });
+
+      return user;
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "USER_VERIFIED",
+        entityType: AuthRole.User,
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: uid, error: error.message }
+      });
+      throw new HttpException(400, "failed", `Failed to verify user `);
+    }
+  }
+
+  public async revokeAccess(uid: string, adminId?: string, ipAddress?: string, userAgent?: string): Promise<IAuth> {
     try {
       const user = await authModel.findById(uid);
       if (!user)
         throw new HttpException(404, "Not found", "User doesn't exist");
       user.userRole = null as any;
       user.allowedMarkets = [] as any;
-      const profile = await profileModel.findOneAndUpdate(
+      
+      await profileModel.findOneAndUpdate(
         { uid },
         {
           $set: {
@@ -111,8 +197,33 @@ class AccessControlService {
         },
         { new: true },
       );
-      return await user.save();
-    } catch (error) {
+      
+      const savedUser = await user.save();
+
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "ACCESS_REVOKED",
+        entityType: AuthRole.User,
+        entityId: user._id,
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: uid }
+      });
+
+      return savedUser;
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "ACCESS_REVOKED",
+        entityType: AuthRole.User,
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: uid, error: error.message }
+      });
       throw new HttpException(400, "failed", `Failed to revoke user access `);
     }
   }
@@ -130,10 +241,10 @@ class AccessControlService {
           .sort(sortOptions)
           .skip(pagination.skip)
           .limit(pagination.limit)
-          // .populate({
-          //   path: "allowedMarkets",
-          //   select: "name location",
-          // })
+          .populate({
+            path: "allowedMarkets",
+            select: "name location",
+          })
           .lean(),
         authModel.countDocuments({}).lean(),
       ]);

@@ -16,7 +16,7 @@ const profile = new Schema<IProfile>({
     ref:"Markets",
     default:null,
   }
-})
+}, { timestamps: true })
 
 
 

@@ -2,6 +2,7 @@ import NodeMailerService from "./nodemailer.service";
 import { agenda } from "../../helpers/agenda";
 import { Job } from "agenda";
 import HttpException from "../../exceptions/http.exception";
+import logger from "../../utils/logger";
 
 const nodeMailerService = new NodeMailerService();
 
@@ -10,8 +11,9 @@ agenda.define("sendMail", async (job: Job) => {
   try {
     const { email, subject, content, mailCategory } = job.attrs.data;
     await nodeMailerService.send(email, subject, content, mailCategory);
+    await job.remove();
   } catch (error: any) {
-    console.error(`[QUEUE ERROR] Job <${job.attrs.name}> failed: ${error.message}`);
+    logger.error(`[QUEUE ERROR] Job <${job.attrs.name}> failed: ${error.message}`, { error });
   }
 });
 

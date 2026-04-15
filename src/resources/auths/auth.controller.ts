@@ -5,7 +5,7 @@ import AuthService from "./auth.service";
 import { authenticate, authorize, TokenPayload } from "../../Middleware/auths";
 import schemaValidator from "../../Middleware/schema-validation.middlware";
 import validator from "./auth.validation";
-
+import authModel from "./auth.model";
 
 
 class AuthControllers implements GlobalController{
@@ -23,14 +23,15 @@ class AuthControllers implements GlobalController{
         this.router.get('/logout',authenticate,this.logout),
         this.router.post("/forgot-password",schemaValidator(validator.forgotPassword),this.forgotPassword)
         this.router.post("/validate-Otp",schemaValidator(validator.validateOtp),this.validateOtp)
-        this.router.patch("/reset-password",authenticate,schemaValidator(validator.updatePassword),this.resetPassword)
+        this.router.patch("/reset-password",schemaValidator(validator.updatePassword),this.resetPassword)
         this.router.post("/resend-otp",schemaValidator(validator.resendOtp),this.resendOtp)
      }
 
      private register = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
         try {
-            
-            const {accessToken,refreshToken} = await this.authService.register(req.body);
+            const ipAddress = req.ip;
+            const userAgent = req.get("User-Agent");
+            const {accessToken,refreshToken} = await this.authService.register(req.body,ipAddress,userAgent);
             res.status(200).json({
                 status:"Success",
                 message:"User Registered Successfully",
@@ -43,8 +44,9 @@ class AuthControllers implements GlobalController{
      private login = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
       try {
           const {email,password} = req.body; 
-                
-          const {accessToken,refreshToken} = await this.authService.login(email,password);
+          const ipAddress = req.ip;
+          const userAgent = req.get("User-Agent");      
+          const {accessToken,refreshToken} = await this.authService.login(email, password, ipAddress, userAgent);
           res.status(200).json({
               status:"Success",
               message:"User Logged in Successfully",
@@ -58,8 +60,10 @@ class AuthControllers implements GlobalController{
    private refreshToken = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
         const {refreshToken} = req.body;
+        const ipAddress = req.ip;
+        const userAgent = req.get("User-Agent");
         if(!refreshToken) throw new HttpException(404,"failed","Token not found")
-        const result = await this.authService.refreshToken(refreshToken);
+        const result = await this.authService.refreshToken(refreshToken, ipAddress, userAgent);
         res.status(200).json({
             status:"Success",
             message:"Token refreshed successfully",
@@ -72,11 +76,14 @@ class AuthControllers implements GlobalController{
    private forgotPassword = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
         const {email} = req.body;
-        const data = await this.authService.forgotPassword(email);
+        const ipAddress = req.ip;
+        const userAgent = req.get("User-Agent");
+        const user = await authModel.findOne({ email: email });
+     
+        const data = await this.authService.forgotPassword(email, ipAddress, userAgent);
         res.status(200).json({
-          status:"Success",
-          message:"Email send successfully",
-          payload:data
+          status:user?true:false,
+          message:data.message,
         })
     } catch (error) {
         next(error)
@@ -86,7 +93,9 @@ class AuthControllers implements GlobalController{
    private  resendOtp = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
         const {email,purpose} = req.body;
-        const data = await this.authService.sendOtp(email,purpose);
+        const ipAddress = req.ip;
+        const userAgent = req.get("User-Agent");
+        const data = await this.authService.sendOtp(email, purpose, ipAddress, userAgent);
         res.status(200).json({
           status:"Success",
           message:"Otp has been successfully sent",
@@ -98,10 +107,10 @@ class AuthControllers implements GlobalController{
    }
    private validateOtp = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-        console.log(req.body)
         const {email,otp,purpose} = req.body
-        // console.log(email,otp,purpose)
-        const result = await this.authService.validateOtp(email,otp,purpose);
+        const ipAddress = req.ip;
+        const userAgent = req.get("User-Agent");
+        const result = await this.authService.validateOtp(email, otp, purpose, ipAddress, userAgent);
         res.status(200).json({
             status:"Success",
             message:"Opt has been successfully validated",
@@ -113,9 +122,11 @@ class AuthControllers implements GlobalController{
    }
    private resetPassword = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-        const{password} = req.body;
-        if (!req.user) throw new HttpException(401, "error", "Unauthorized - user not found");
-        const result = await this.authService.resetPassword(req.user as TokenPayload, password);
+        const{password,resetToken} = req.body;
+        const ipAddress = req.ip;
+        const userAgent = req.get("User-Agent");
+        // if (!req.user) throw new HttpException(401, "error", "Unauthorized - user not found");
+        const result = await this.authService.resetPassword(password, resetToken, ipAddress, userAgent);
         res.status(201).json({
             status:"Success",
             message:"User password has been successfully reseted",
@@ -128,8 +139,10 @@ class AuthControllers implements GlobalController{
    private logout = async(req:Request,res:Response,next:NextFunction)=>{
      try {
         const token = req.user;
+        const ipAddress = req.ip;
+        const userAgent = req.get("User-Agent");
         if(!token) throw new HttpException(404,"fialed","Token not found")
-        await this.authService.logout(token as TokenPayload)
+        await this.authService.logout(token as TokenPayload, ipAddress, userAgent)
         res.status(200).json({status: "success", message: "Logout successful", payload:req.user});
      } catch (error) {
         next(error)

@@ -14,7 +14,7 @@ const inventorySchema = new Schema<IInventory>({
     preferredMarket: { type: Types.ObjectId, ref: "Markets" },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
-})
+}, { timestamps: true })
 
 inventorySchema.index({ userId: 1 });
 

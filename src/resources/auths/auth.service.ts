@@ -1,7 +1,7 @@
 import HttpException from "../../exceptions/http.exception";
 import authModel from "./auth.model";
 import tokens from "../../utils/tokens";
-import { IAuth, OauthProvider } from "./auth.interface";
+import { AuthRole, IAuth, OauthProvider } from "./auth.interface";
 import { TokenPayload } from "../../Middleware/auths";
 import NodeMailerService from "../mail/nodemailer.service";
 import OtpService from "../otp/opt.service";
@@ -12,14 +12,20 @@ import { JwtPayload } from "jsonwebtoken";
 import { OtpPurpose } from "../otp/opt.protocol";
 import otpModel from "../otp/otp.model";
 import AgendaQueueService from "../mail/email.worker";
+import AuditLogService from "../audit-logs/audit-log.service";
+import logger from "../../utils/logger";
+
 class AuthService {
   private Mail = new NodeMailerService();
   private Otp = new OtpService();
   private Profile = new ProfileService();
   private Agenda = new AgendaQueueService();
+  private logs = new AuditLogService();
 
   public async register(
     data: IAuth,
+    ipAddress?: string,
+    userAgent?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       const createdUser = await authModel.findOne({ email: data.email });
@@ -59,9 +65,32 @@ class AuthService {
       templates,
       "Verification",
     );
-      
+     await this.logs.logAction(
+        {
+     
+        ipAddress: ipAddress,
+        userAgent: userAgent,  
+        actorId: createUser._id,
+        actorType: AuthRole.User,
+        action: "USER_REGISTRATION",
+        entityType: AuthRole.User,
+        entityId: createUser._id,
+        status: "SUCCESS",
+        metadata: { email: createUser.email, ipAddress: ipAddress },
+        }
+      )
       return { accessToken, refreshToken };
-    } catch (error) {
+    } catch (error: any) {
+      await this.logs.logAction(
+        {
+        actorId:data.id,  
+        actorType: AuthRole.User,
+        action: "USER_REGISTRATION",
+        entityType: AuthRole.User,
+        status: "FAILED",
+        metadata: { email: data.email, error: error.message },
+        }
+      )
       throw new HttpException(
         404,
         "failed",
@@ -73,9 +102,12 @@ class AuthService {
   public async login(
     email: string,
     password: string,
+    ipAddress?: string,
+    userAgent?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
+    let user = null;
     try {
-      const user = await authModel.findOne({ email: email });
+      user = await authModel.findOne({ email: email });
 
       //check if user has been registered
 
@@ -102,33 +134,95 @@ class AuthService {
       user.sessionToken = accessToken;
 
       await user.save();
+      await this.logs.logAction(
+        {
+        actorId:user.id,  
+        actorType: AuthRole.User,
+        action: "USER_LOGIN",
+        entityType: AuthRole.User,
+        entityId: user.id,
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { email: user.email },
+        }
+      )
       return { accessToken, refreshToken };
-    } catch (error) {
+    } catch (error: any) {
+      await this.logs.logAction(
+        {
+        actorId:user?.id,  
+        actorType: AuthRole.User,
+        action: "USER_LOGIN",
+        entityType: AuthRole.User,
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { email: email, error: error.message },
+        }
+      )
       throw new HttpException(404, "failed", `User login failed ${error}`);
     }
   }
 
-  public async loginWithOauth(profile: any, provider: OauthProvider) {
-    const email = profile.emails?.[0]?.value;
-    const fullName = profile.displayName;
-    const avatar = profile.photos?.[0]?.value;
-    const user = await authModel.findOne({ email });
-    if (!user) {
-      const newUser = new authModel({ email, fullName, avatar });
-    } else {
-      const tokenSession = tokens.generateSessionId();
-      const refreshSession = tokens.generateSessionId();
-      const accessToken = tokens.generateAcessToken(user, tokenSession);
-      const refreshToken = tokens.generaterefreshToken(user, refreshSession);
-      user.refreshToken = refreshToken;
-      user.sessionToken = accessToken;
-      await user.save();
-      return { accessToken, refreshToken };
+
+
+  public async loginWithOauth(profile: any, provider: OauthProvider, ipAddress?: string, userAgent?: string) {
+    try {
+      const email = profile.emails?.[0]?.value;
+      const fullName = profile.displayName;
+      const avatar = profile.photos?.[0]?.value;
+      const user = await authModel.findOne({ email });
+      if (!user) {
+        const newUser = new authModel({ email, fullName, avatar });
+        await newUser.save();
+        await this.logs.logAction({
+          actorId: newUser._id,
+          actorType: AuthRole.User,
+          action: "OAUTH_REGISTRATION",
+          status: "SUCCESS",
+          ipAddress,
+          userAgent,
+          metadata: { provider, email: profile.emails?.[0]?.value }
+        });
+        return { user: newUser };
+      } else {
+        const tokenSession = tokens.generateSessionId();
+        const refreshSession = tokens.generateSessionId();
+        const accessToken = tokens.generateAcessToken(user, tokenSession);
+        const refreshToken = tokens.generaterefreshToken(user, refreshSession);
+        user.refreshToken = refreshToken;
+        user.sessionToken = accessToken;
+        await user.save();
+        await this.logs.logAction({
+          actorId: user._id,
+          actorType: AuthRole.User,
+          action: "OAUTH_LOGIN",
+          status: "SUCCESS",
+          ipAddress,
+          userAgent,
+          metadata: { provider, email: user.email }
+        });
+        return { accessToken, refreshToken };
+      }
+    } catch (error: any) {
+       await this.logs.logAction({
+          actorType: AuthRole.User,
+          action: "OAUTH_LOGIN",
+          status: "FAILED",
+          ipAddress,
+          userAgent,
+          metadata: { provider, error: error.message }
+        });
+        throw new HttpException(400, "failed", `OAuth login failed ${error}`);
     }
   }
 
+
   public async refreshToken(
     token: string,
+    ipAddress?: string,
+    userAgent?: string,
   ): Promise<{ refreshToken: string; accessToken: string }> {
     try {
       const decoded = (await tokens.verifyRefreshToken(token)) as JwtPayload;
@@ -142,8 +236,25 @@ class AuthService {
       user.refreshToken = refreshToken;
       user.sessionToken = accessToken;
       await user.save();
+      await this.logs.logAction({
+        actorId: user._id,
+        actorType: AuthRole.User,
+        action: "TOKEN_REFRESH",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { userId: user._id }
+      });
       return { refreshToken, accessToken };
-    } catch (error) {
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorType: AuthRole.User,
+        action: "TOKEN_REFRESH",
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { error: error.message }
+      });
       throw new HttpException(
         404,
         "failed",
@@ -152,11 +263,13 @@ class AuthService {
     }
   }
 
-  public async forgotPassword(email: string): Promise<{ message: string }> {
+
+  public async forgotPassword(email: string, ipAddress?: string, userAgent?: string): Promise<{ message: string }> {
+    let user = null;
     try {
-      const user = await authModel.findOne({ email: email });
+      user = await authModel.findOne({ email: email });
       if (!user) {
-        return { message: "User email hasn't been registered to our platform" };
+        return { message:"If your email is registered, you will receive an OTP Code"};
       }
       try {
         const uid = user.id.toString();
@@ -175,26 +288,47 @@ class AuthService {
           "Verification",
         );
       } catch (error) {
-        console.log(`Email couldn't be sent to user ${error}`);
+        logger.error(`Email couldn't be sent to user`, { error });
       }
       const tokenSession = tokens.generateSessionId();
       const resetToken = tokens.generateAcessToken(user, tokenSession);
-      // Send email with reset tokens
+      
+      await this.logs.logAction({
+        actorId: user._id,
+        actorType: AuthRole.User,
+        action: "PASSWORD_RESET_REQUEST",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { email: user.email }
+      });
+
       return {
         message:
-          "If your email is registered, you will receive a password reset link",
+          "If your email is registered, you will receive an OTP Code",
         // resetCode: resetToken
       };
-    } catch (error) {
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: user?._id,
+        actorType: AuthRole.User,
+        action: "PASSWORD_RESET_REQUEST",
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { email, error: error.message }
+      });
       throw new Error(
         `Failed to process forgot password request: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }
 
-  public async sendOtp(email: string,purpose:OtpPurpose): Promise<{ message: string }> {
+
+  public async sendOtp(email: string, purpose: OtpPurpose, ipAddress?: string, userAgent?: string): Promise<{ message: string }> {
+    let user = null;
     try {
-      const user = await authModel.findOne({ email: email });
+      user = await authModel.findOne({ email: email });
       if (!user) {
         return { message: "User email hasn't been registered to our platform" };
       }
@@ -218,13 +352,6 @@ class AuthService {
             otp,
           );
         }
-        // if(purpose === OtpPurpose.Registration){
-        //   subject = "Verify your Email"
-        //   templates = Mailtemplates.userVerificationTemplate.replace(
-        //     "{{OTP_CODE}}",
-        //     otp,
-        //   );
-        // }
         
         await this.Agenda.sendNow(
           user.email,
@@ -233,62 +360,112 @@ class AuthService {
           "Verification",
         );
       } catch (error) {
-        console.log(`Email couldn't be sent to user ${error}`);
+        logger.error(`Email couldn't be sent to user`, { error });
       }
-      const tokenSession = tokens.generateSessionId();
-      const resetToken = tokens.generateAcessToken(user, tokenSession);
-      // Send email with reset tokens
+      
+      await this.logs.logAction({
+        actorId: user._id,
+        actorType: AuthRole.User,
+        action: "OTP_SENT",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { email: user.email, purpose }
+      });
+
       return {
         message:
           "If your email is registered, you will receive a password reset link",
         // resetCode: resetToken
       };
-    } catch (error) {
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: user?._id,
+        actorType: AuthRole.User,
+        action: "OTP_SENT",
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { email, purpose, error: error.message }
+      });
       throw new Error(
         `Failed to process forgot password request: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }
 
-  public async validateOtp(email: string, otp: string, purpose: string) {
-    
-    const user = await authModel.findOne({ email: email });
-    if (!user) {
-     throw new HttpException(400, "Invalid", "Invalid email or OTP");
+
+  public async validateOtp(email: string, otp: string, purpose: string, ipAddress?: string, userAgent?: string) {
+    let user = null;
+    try {
+      user = await authModel.findOne({ email: email });
+      if (!user) {
+        throw new HttpException(400, "Invalid", "Invalid email or OTP");
+      }
+
+      const verifyOtp = await this.Otp.veriryOtp(user.id.toString(),otp);  
+      if (!verifyOtp) {
+        throw new HttpException(400, "Expired", "OTP expired or invalid");
+      }
+
+      const otpRecord = await otpModel.findOneAndDelete({
+        uid:user.id.toString(),
+        otp:otp,
+        type:purpose,
+        expiresAt: { $gt: new Date() },
+      });
+      if(!user.isVerified && purpose === OtpPurpose.Registration){
+        const userVerified = await authModel.findByIdAndUpdate(
+           user.id,
+          { isVerified: true },
+          { new: true }
+        );
+
+        this.sendWelcomeEmail(user);
+      } 
+      
+      await this.logs.logAction({
+        actorId: user._id,
+        actorType: AuthRole.User,
+        action: "OTP_VALIDATED",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { email: user.email, purpose }
+      });
+
+      if(purpose === OtpPurpose.RESETPASSWORD){
+        const tokenSession = tokens.generateSessionId();
+        const resetToken = tokens.generateAcessToken(user, tokenSession);
+        return {
+          success: true,
+          message: "OTP verified ",
+          resetToken: resetToken
+        };
+      }
+
+      if (purpose === OtpPurpose.VERIFICATION) {
+        return {
+          success: true,
+          message: "OTP verified "
+        };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+       await this.logs.logAction({
+        actorId: user?._id,
+        actorType: AuthRole.User,
+        action: "OTP_VALIDATED",
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { email, purpose, error: error.message }
+      });
+      throw error;
     }
-
-  const verifyOtp = await this.Otp.veriryOtp(user.id.toString(),otp);  
-    if (!verifyOtp) {
-    throw new HttpException(400, "Expired", "OTP expired or invalid");
   }
 
-    const otpRecord = await otpModel.findOneAndDelete({
-    uid:user.id.toString(),
-    otp:otp,
-    type:purpose,
-    expiresAt: { $gt: new Date() },
-  });
-  if(!user.isVerified && purpose === OtpPurpose.Registration){
-    const userVerified = await authModel.findByIdAndUpdate(
-       user.id,
-      { isVerified: true },
-      { new: true }
-    );
-
-    this.sendWelcomeEmail(user);
-  } 
-
-
-  if (purpose === OtpPurpose.VERIFICATION) {
-    
-    return {
-      success: true,
-      message: "OTP verified "
-    };
-  }
-
-  return { success: true };
-}
   // public async validateOtp(
   //   email: string,
   //   token: string,
@@ -315,26 +492,44 @@ class AuthService {
   // }
 
   public async resetPassword(
-    auth: TokenPayload,
     password: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+    resetToken: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    let user = null;
     try {
-      const email = auth.email;
-      const user = await authModel.findOne({ email: email });
+      const decoded = (await tokens.verifyAccessToken(resetToken)) as JwtPayload;
+      const email = decoded.email;
+      user = await authModel.findOne({ email: email });
       if (!user) throw new HttpException(404, "Not found", "User not found");
 
-      const tokenSession = tokens.generateSessionId();
-      const refreshSession = tokens.generateSessionId();
-      const accessToken = tokens.generateAcessToken(user, tokenSession);
-      const refreshToken = tokens.generaterefreshToken(user, refreshSession);
-
-      user.sessionToken = accessToken;
-      user.refreshToken = refreshToken;
+      user.sessionToken = null;
+      user.refreshToken = null;
       user.password = password;
+    
       await user.save();
+      
+      await this.logs.logAction({
+        actorId: user._id,
+        actorType: AuthRole.User,
+        action: "PASSWORD_RESET_COMPLETE",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { email: user.email }
+      });
 
-      return { accessToken, refreshToken };
-    } catch (error) {
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: user?._id,
+        actorType: AuthRole.User,
+        action: "PASSWORD_RESET_COMPLETE",
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { error: error.message }
+      });
       throw new HttpException(
         400,
         "failed",
@@ -342,7 +537,8 @@ class AuthService {
       );
     }
   }
-  public async logout(auth: TokenPayload): Promise<void> {
+
+  public async logout(auth: TokenPayload, ipAddress?: string, userAgent?: string): Promise<void> {
     try {
       const result = await authModel.findByIdAndUpdate(
         auth?.id,
@@ -357,10 +553,30 @@ class AuthService {
       if (!result)
         throw new HttpException(404, "User not found", "Login failed");
       await result.save();
-    } catch (error) {
+      
+      await this.logs.logAction({
+        actorId: auth?.id,
+        actorType: AuthRole.User,
+        action: "USER_LOGOUT",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { userId: auth?.id }
+      });
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: auth?.id,
+        actorType: AuthRole.User,
+        action: "USER_LOGOUT",
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { error: error.message }
+      });
       throw new HttpException(400, "failed", `User logout failed ${error}`);
     }
   }
+
 
 
   private async sendWelcomeEmail(user: IAuth): Promise<void> {

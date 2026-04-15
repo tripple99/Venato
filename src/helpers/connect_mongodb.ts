@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import logger from "../utils/logger";
+
 
 
 async function connectDB(){
@@ -11,27 +13,29 @@ async function connectDB(){
    try {
     
    if(!MONGO_URI){
-      console.error("URI isn't defined");
+      logger.error("URI isn't defined");
     }
 
     connectedString = MONGO_URI ?? 'mongodb://localhost:27017/Venato';
 
     
     mongoose.connection.on('connected',()=>{
-      console.log("MongoDB conntection succesfully established 🛜")
+      logger.info("MongoDB conntection succesfully established 🛜")
     })
     mongoose.connection.on('error', (err)=>{
-      console.log(`Error whilst connecting DB ${err.message}`)
+      logger.error(`Error whilst connecting DB ${err.message}`)
     })
     mongoose.connection.on("disconnected",()=>{
-      console.log("MongoDB connection disconnected ❌")
+      logger.info("MongoDB connection disconnected ❌")
     })
   
     await mongoose.connect(connectedString,options)
    } catch (error:any) {
-    console.error(`MongoDB connection error: ${error.message}`);
-    console.error(`Error name: ${error.name}, code: ${error.code}`);
-    console.error(`Stack trace: ${error.stack}`);
+    logger.error(`MongoDB connection error: ${error.message}`, {
+        name: error.name,
+        code: error.code,
+        stack: error.stack
+    });
    } 
  
 } 

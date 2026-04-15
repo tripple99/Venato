@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import logger from "../../utils/logger";
+
 
 class NodeMailerService {
   public async sendMail(
@@ -23,7 +25,7 @@ class NodeMailerService {
       });
     
     } catch (error) {
-      console.error(`Error sending email: ${error}`);
+      logger.error(`Error sending email`, { error });
     }
   }
   public async send(

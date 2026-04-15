@@ -4,6 +4,7 @@ import App from "./app";
 import validateEnv from './utils/validate-env';
 import connectDB from './helpers/connect_mongodb';
 import { startAgenda } from './helpers/agenda';
+import logger from './utils/logger';
 
 
 import AuthControllers from "./resources/auths/auth.controller"
@@ -16,6 +17,8 @@ import WatchListControllers from './resources/watch-List/watch-list.controller';
 import InventoryController from './inventory/inventory.controller';
 import AlertController from './alert/alert.controller';
 import AnalyticsController from './analytics/analytics.controller';
+import './resources/audit-logs/audit-queues/audit-queues';
+
 
 
   
@@ -31,17 +34,14 @@ import AnalyticsController from './analytics/analytics.controller';
 require("dotenv").config();
 
 process.on("uncaughtExceptions",(error)=>{
-  console.error("Uncaught exception",error);
+  logger.error("Uncaught exception", { error });
   process.exit(1)
 })
 
 
 
 process.on("unhandledRejections",(reason)=>{
-    console.error(`
-        
-        `)
-
+    logger.error("Unhandled Rejection", { reason });
 })
 
 
@@ -49,7 +49,7 @@ process.on("unhandledRejections",(reason)=>{
 try {
     validateEnv()
 } catch(error) {
-    console.error("Missing Environment Variables")
+    logger.error("Missing Environment Variables");
 }
 
 async function startApp() {
@@ -75,9 +75,9 @@ async function startApp() {
             )
 
             app.listen();
-            console.log(`🚀 Server is running at ${process.env.baseUrl || `http://localhost:${port}`}`);
+            logger.info(`🚀 Server is running at ${process.env.baseUrl || `http://localhost:${port}`}`);
     } catch (error) {
-        console.error('fialed to started Application',error)
+        logger.error('failed to started Application', { error });
     }
 
 

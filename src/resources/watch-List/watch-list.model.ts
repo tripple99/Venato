@@ -9,7 +9,7 @@ const watchListSchema = new Schema<WatchList>({
     // market: { type: Schema.Types.ObjectId, ref: "Markets", required: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
-})
+}, { timestamps: true })
 
 watchListSchema.index({ user: 1, product: 1 }, { unique: true }); 
 

@@ -26,7 +26,7 @@ const priceSnapshotSchema = new Schema<IPriceSnapshot>({
         type:Date,
         default:Date.now
     }
-})
+}, { timestamps: true })
 
 priceSnapshotSchema.index({ productId: 1, timestamp: -1 });
 

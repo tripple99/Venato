@@ -1,17 +1,14 @@
 import {Request,Response,NextFunction} from "express";
 import HttpException from "../exceptions/http.exception";
+import logger from "../utils/logger";
+
 
 
 function errorMiddleware(error:HttpException,req:Request,res:Response,_next :NextFunction){
-    console.log(`
-       {
-        path:${req.path},
-        method:${req.method},
-        error:${error.message}
-        stack:${error.stack}
-    }
-        ` 
-    )
+    logger.error(`Error processing path: ${req.path} method: ${req.method}`, {
+        error: error.message,
+        stack: error.stack
+    });
 
     const status = error.status || "error";
     const statusCode = error.statusCode || 500;

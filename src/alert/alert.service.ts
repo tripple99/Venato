@@ -6,12 +6,17 @@ import priceSnapshotModel from "../price-snapshot/price.model";
 import AgendaQueueService from "../resources/mail/email.worker";
 import authModel from "../resources/auths/auth.model";
 import productModel from "../resources/products/product.model";
+import AuditLogService from "../resources/audit-logs/audit-log.service";
+import { AuthRole } from "../resources/auths/auth.interface";
 import mongoose from "mongoose";
+import logger from "../utils/logger";
+
 
 class AlertService {
     private queueService = new AgendaQueueService();
+    private logs = new AuditLogService();
     
-    async createAlert(alert: any) {
+    async createAlert(alert: any, ipAddress?: string, userAgent?: string) {
         try {
             const {productId, targetValue, condition, marketId, user, currency, cooldownMinutes, isActive} = alert;
             const newAlert = new alertModel({
@@ -24,8 +29,32 @@ class AlertService {
                 cooldownMinutes,
                 isActive
             });
-            return await newAlert.save();
-        } catch (error) {
+            const savedAlert = await newAlert.save();
+            
+            await this.logs.logAction({
+                actorId: user,
+                actorType: AuthRole.User,
+                action: "ALERT_CREATED",
+                entityType: "Alert",
+                entityId: savedAlert._id,
+                status: "SUCCESS",
+                ipAddress,
+                userAgent,
+                metadata: { productId, targetValue, condition }
+            });
+            
+            return savedAlert;
+        } catch (error: any) {
+             await this.logs.logAction({
+                actorId: alert.user,
+                actorType: AuthRole.User,
+                action: "ALERT_CREATED",
+                entityType: "Alert",
+                status: "FAILED",
+                ipAddress,
+                userAgent,
+                metadata: { error: error.message }
+            });
             throw new HttpException(400, "Failed","Failed to create an alert");
         }
     }
@@ -46,19 +75,71 @@ class AlertService {
         }
     }
 
-    async updateAlert(id: string, userId: string, alert: IAlert) {
+    async updateAlert(id: string, userId: string, alert: IAlert, ipAddress?: string, userAgent?: string) {
         try {
-            return await alertModel.findOneAndUpdate({ _id: id, user: userId }, alert, { new: true });
-        } catch (error) {
+            const updatedAlert = await alertModel.findOneAndUpdate({ _id: id, user: userId }, alert, { new: true });
+            if (!updatedAlert) throw new HttpException(404, "Not found", "Alert not found");
+
+            await this.logs.logAction({
+                actorId: userId,
+                actorType: AuthRole.User,
+                action: "ALERT_UPDATED",
+                entityType: "Alert",
+                entityId: updatedAlert._id,
+                status: "SUCCESS",
+                ipAddress,
+                userAgent,
+                metadata: { alertId: id }
+            });
+
+            return updatedAlert;
+        } catch (error: any) {
+            await this.logs.logAction({
+                actorId: userId,
+                actorType: AuthRole.User,
+                action: "ALERT_UPDATED",
+                entityType: "Alert",
+                entityId: new mongoose.Types.ObjectId(id),
+                status: "FAILED",
+                ipAddress,
+                userAgent,
+                metadata: { error: error.message }
+            });
             throw new HttpException(400, "Failed","Failed to update an alert");
         }
     }
 
-    async deleteAlert(id: string, userId?: string) {
+    async deleteAlert(id: string, userId?: string, ipAddress?: string, userAgent?: string) {
         try {
             const query = userId ? { _id: id, user: userId } : { _id: id };
-            return await alertModel.findOneAndDelete(query);
-        } catch (error) {
+            const deletedAlert = await alertModel.findOneAndDelete(query);
+            if (!deletedAlert) throw new HttpException(404, "Not found", "Alert not found");
+
+            await this.logs.logAction({
+                actorId: userId || deletedAlert.user.toString(),
+                actorType: userId ? AuthRole.User : AuthRole.superAdmin,
+                action: "ALERT_DELETED",
+                entityType: "Alert",
+                entityId: deletedAlert._id,
+                status: "SUCCESS",
+                ipAddress,
+                userAgent,
+                metadata: { alertId: id }
+            });
+
+            return deletedAlert;
+        } catch (error: any) {
+             await this.logs.logAction({
+                actorId: userId,
+                actorType: AuthRole.User,
+                action: "ALERT_DELETED",
+                entityType: "Alert",
+                entityId: new mongoose.Types.ObjectId(id),
+                status: "FAILED",
+                ipAddress,
+                userAgent,
+                metadata: { error: error.message }
+            });
             throw new HttpException(400, "Failed","Failed to delete an alert");
         }
     }
@@ -134,13 +215,33 @@ class AlertService {
                       content,
                       "Alert"
                   );
+
+                  await this.logs.logAction({
+                      actorId: user._id,
+                      actorType: AuthRole.User,
+                      action: "ALERT_TRIGGERED",
+                      entityType: "Alert",
+                      entityId: alert._id,
+                      status: "SUCCESS",
+                      metadata: { productId: alert.productId, price: snapshot.price, targetValue: alert.targetValue }
+                  });
               }
-           } catch (e) {
-              console.error("Failed to queue alert email", e);
+           } catch (e: any) {
+              logger.error("Failed to queue alert email", { error: e.message, stack: e.stack });
+              await this.logs.logAction({
+                actorId: alert.user,
+                actorType: AuthRole.User,
+                action: "ALERT_TRIGGERED",
+                entityType: "Alert",
+                entityId: alert._id,
+                status: "FAILED",
+                metadata: { error: e.message }
+            });
            }
        }
    }
 }
 }
+
 
 export default  AlertService;

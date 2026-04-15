@@ -11,7 +11,9 @@ import bcrypt from "bcrypt";
 const AuthSchema = new Schema<IAuth>({
   fullname: { type: String, required: true },
   email: { type: String, required: true },
-  password: { type: String, required: true ,select:false},
+  password: { type: String, required: true ,
+    
+  },
   userRole: {
     type: String,
     enum: Object.values(AuthRole),
@@ -32,13 +34,13 @@ const AuthSchema = new Schema<IAuth>({
     },
   },
   isVerified: { type: Boolean, default: false },
-  refreshToken: { type: String, default: "" ,select:false},
-  sessionToken: { type: String, default: null ,select:false},
+  refreshToken: { type: String, default: "" },
+  sessionToken: { type: String, default: null },
   // activity tracking
   isActive: { type: Boolean, default: false },
   lastActive: { type: Date, default: null },
   // Oauth2: { type: Oauth2Schema, default: null,required:false }
-});
+}, { timestamps: true });
 
 
 

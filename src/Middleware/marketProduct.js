@@ -1,5 +1,7 @@
 import Auth from "../models/Admin.js";
 import mongoose from "mongoose";
+import logger from "../utils/logger.js";
+
 
 const checkAllowedMarkets = async (req, res, next) => {
   try {
@@ -33,7 +35,7 @@ const checkAllowedMarkets = async (req, res, next) => {
     req.market = market;
     next();
   } catch (error) {
-    console.error("Market access check error:", error);
+    logger.error("Market access check error:", { error: error.message, stack: error.stack });
     res.status(500).json({ message: "Internal server error during market access check" });
   }
 };

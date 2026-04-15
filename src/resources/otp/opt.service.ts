@@ -24,9 +24,7 @@ class OtpService{
   }
 
   public async veriryOtp(uid:string,otp:string,):Promise<boolean>{
-    console.log(uid,otp)
     const otpVerify = await otpModel.findOne({uid,otp})
-    console.log(otpVerify)
     if(!otpVerify) return false;
     if(otpVerify.isVerified) return false
     if(otpVerify.expiresAt <  new Date()) return false

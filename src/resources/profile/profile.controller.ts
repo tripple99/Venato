@@ -26,7 +26,7 @@ class ProfileController implements GlobalController{
    private getProfile = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
       const user = req.user
-      console.log(user)
+
       if(!user) throw new HttpException(404,"Not found","User not found")
       const result = await this.profile.getProfile(user.id)
       res.status(200).json({
@@ -42,9 +42,11 @@ class ProfileController implements GlobalController{
     try {
       const uid = req.params.id
       const user = req.user
+      const ipAddress = req.ip;
+      const userAgent = req.get("User-Agent");
       if(!user) throw new HttpException(404,"Not found","User not found")
       if(uid !== user.id) throw new HttpException(403,"Forbidden","You are not authorized to update this profile")
-      const result = await this.profile.updateProfile(uid,req.body)
+      const result = await this.profile.updateProfile(uid, req.body, ipAddress, userAgent)
       res.status(200).json({
         status:"Success",
         message:"User update successfull",
@@ -57,7 +59,10 @@ class ProfileController implements GlobalController{
    private delete = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
       const uid = req.params.id;
-      const result = await this.profile.deleteProfile(uid);
+      const adminId = (req as any).user?.id;
+      const ipAddress = req.ip;
+      const userAgent = req.get("User-Agent");
+      const result = await this.profile.deleteProfile(uid, adminId, ipAddress, userAgent);
       res.status(200).json({
          status:"Successfull",
          message:"Profile deleted succesfully",

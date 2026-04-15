@@ -29,7 +29,7 @@ class ProductController implements GlobalController{
      this.router.get("/:id",[authenticate,authorize([AuthRole.Admin])],this.fetchProductById)
      this.router.post("/",[authenticate,authorize([AuthRole.Admin]),allowedMarket('body')],schemaValidator(validator.createProduct),this.createProduct)
      this.router.patch("/:id",[authenticate,authorize([AuthRole.Admin]),allowedMarket('body')],schemaValidator(validator.updateProduct),this.updateProduct);
-     this.router.delete("/:id",[authenticate,authorize([AuthRole.Admin]),allowedMarket('params')],this.deleteProduct)
+     this.router.delete("/:id/:marketId",[authenticate,authorize([AuthRole.Admin]),allowedMarket('params')],this.deleteProduct)
    }
 
  
@@ -78,7 +78,6 @@ class ProductController implements GlobalController{
   private filterProductByMarket = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
       const {market} = req.params;
-      console.log(market);
       const result = await this.Productservice.fetchProductsByMarket(market,req.query);
       res.status(200).json({
         status:"Successfull",
@@ -92,7 +91,7 @@ class ProductController implements GlobalController{
 
   private  fetchProducts = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-      const fetch = await this.Productservice.getProducts(req.markets)
+      const fetch = await this.Productservice.getProducts(req.markets,req.query)
       res.status(200).json({
         status:"Success",
         message:"Products fetched successfully",
@@ -136,8 +135,8 @@ class ProductController implements GlobalController{
    }
    private deleteProduct = async (req:Request,res:Response,next:NextFunction):Promise<void>=>{
       try {
-         const market = req.markets
-        const data = await this.Productservice.delete(req.params.id,market);
+        //  const market = req.markets
+        const data = await this.Productservice.delete(req.params.id);
         res.status(200).json({
           status:"Success",
           message:"Product deleted successfully",

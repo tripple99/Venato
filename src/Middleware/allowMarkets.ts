@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { Request, Response, NextFunction } from "express";
 import authModel from "../resources/auths/auth.model";
+import logger from "../utils/logger";
+
 import { AllowedMarkets } from "../resources/auths/auth.interface";
 import { TokenPayload } from "../Middleware/auths";
 import HttpException from "../exceptions/http.exception";
@@ -52,7 +54,7 @@ const allowedMarket = (source: "params" | "body" | "query") => {
       
       next();
     } catch (error: any) {
-      console.error("CRITICAL: allowedMarket Middleware Error ->", error);
+      logger.error("CRITICAL: allowedMarket Middleware Error ->", { error: error.message, stack: error.stack });
       next(new HttpException(500, "Internal Server Error", "Error verifying market access"));
     }
   };
