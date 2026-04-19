@@ -41,6 +41,7 @@ export interface IMarketProduct {
   // priceHistory:PriceHistory[],
   createdBy:Types.ObjectId;
   updatedBy:Types.ObjectId;
+  isWatched?: boolean;
 }
 
 

@@ -12,12 +12,12 @@ import {
 } from "../../utils/pagination";
 import PriceSnapshotService from "../../price-snapshot/price.service";
 import { Types } from "mongoose";
-
+import watchListModel from "../watch-List/watch-list.model";
 import { Source } from "../../price-snapshot/price.interface";
 class ProductService {
   private priceSnapShotService: PriceSnapshotService =
     new PriceSnapshotService();
-
+ private watchListModel: any = watchListModel;
   public async create(product: IMarketProduct): Promise<IMarketProduct> {
     try {
       const marketId = product.market || (product as any).marketId;
@@ -56,7 +56,7 @@ class ProductService {
   }
   public async fetchProductById(uid: string): Promise<IMarketProduct> {
     try {
-      const product = await productModel.findById(uid);
+      const product = await productModel.findById(uid).populate("market", "name location");
       if (!product)
         throw new HttpException(401, "Not found", "Product doesn't exist");
       return product;
@@ -129,17 +129,52 @@ class ProductService {
 
   public async fetchAllProduct(
     query: any = {},
+    userId: string,
   ): Promise<PaginationResult<IMarketProduct>> {
+    console.log(userId);
+    
     try {
       const pagination = paginationQuery(query);
       const sortOptions = buildSortOptions(
         pagination.sortBy,
         pagination.sortOrder,
       );
-      const filter = {
+      const filter: any = {
         ...(query.marketId && { market: query.marketId }),
+        ...(query.category && query.category !== "all" && { category: query.category }),
       };
 
+      // Add Price range filtering
+      if (query.minPrice || query.maxPrice) {
+        filter.price = {};
+        if (query.minPrice) filter.price.$gte = Number(query.minPrice);
+        if (query.maxPrice) filter.price.$lte = Number(query.maxPrice);
+      }
+
+      if (query.search) {
+        const searchRegex = new RegExp(query.search, "i");
+
+        // Find markets matching the search term in name or location
+        const matchingMarkets = await marketModel
+          .find({
+            $or: [
+              { name: searchRegex },
+              { "location.state": searchRegex },
+              { "location.LGA": searchRegex },
+            ],
+          })
+          .select("_id");
+
+        const marketIds = matchingMarkets.map((m) => m._id);
+      
+        filter.$or = [
+          { name: searchRegex },
+          { description: searchRegex },
+          { category: searchRegex }, // Allow searching for category names too
+          { sku: searchRegex },
+          { market: { $in: marketIds } },
+        ];
+      }
       const [products, totalCount] = await Promise.all([
         productModel
           .find(filter).populate("market","name location")
@@ -149,8 +184,20 @@ class ProductService {
           .lean(),
         productModel.countDocuments(filter),
       ]);
+      let watchListIds: string[] = [];
+      if (userId) {
+        const watchList = await this.watchListModel
+          .find({ user: new Types.ObjectId(userId) })
+          .select("product");
+        watchListIds = watchList.map((w: any) => w.product.toString());
+      }
+
+      const productsWithWatchStatus = products.map((product) => ({
+        ...product,
+        isWatched: watchListIds.includes(product._id.toString()),
+      }));
       return createPaginatedResult(
-        products,
+        productsWithWatchStatus,
         totalCount,
         pagination.page,
         pagination.limit,

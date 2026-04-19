@@ -83,3 +83,43 @@ export const authorize = (roles?: AuthRole[]) => {
     next();
   };
 };
+
+export const authenticateOptional = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const bearerToken = req.headers.authorization;
+
+  if (!bearerToken?.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const token = bearerToken.split(' ')[1];
+
+  try {
+    const secret = process.env.ACCESS_TOKEN;
+    if (!secret) throw new Error('ACCESS_TOKEN missing');
+
+    const payload = jwt.verify(token, secret) as TokenPayload;
+    req.user = payload;
+    req.markets = payload.allowedMarkets;
+
+    await authModel.findOneAndUpdate(
+      {
+        _id: payload.id,
+        lastActive: { $lt: new Date(Date.now() - 5 * 60 * 1000) }
+      },
+      {
+        $set: {
+          isActive: true,
+          lastActive: new Date()
+        }
+      }
+    );
+
+    next();
+  } catch {
+    next();
+  }
+};

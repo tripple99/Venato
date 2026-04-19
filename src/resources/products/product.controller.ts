@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, Router } from "express";
 import ProductService from "./product.service";
 import GlobalController from "../../controllers/globalControllers";
-import { authenticate, authorize } from "../../Middleware/auths";
+import { authenticate, authorize, authenticateOptional } from "../../Middleware/auths";
 import allowedMarket from "../../Middleware/allowMarkets";
 import { AuthRole } from "../auths/auth.interface";
 import HttpException from "../../exceptions/http.exception";
@@ -20,7 +20,7 @@ class ProductController implements GlobalController {
   }
 
   private initializedController(): void {
-    this.router.get("/All", this.fetchAll);
+    this.router.get("/All", [authenticateOptional], this.fetchAll);
     this.router.get("/filter", this.filterProduct);
     this.router.get("/filter/market/:market", this.filterProductByMarket);
     this.router.get(
@@ -30,7 +30,7 @@ class ProductController implements GlobalController {
     );
     this.router.get(
       "/:id",
-      [authenticate, authorize([AuthRole.Admin])],
+      [authenticate],
       this.fetchProductById,
     );
     this.router.post(
@@ -101,7 +101,8 @@ class ProductController implements GlobalController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const products = await this.Productservice.fetchAllProduct(req.query);
+      const userId = req.user?.id;
+      const products = await this.Productservice.fetchAllProduct(req.query,userId);
       res.status(200).json({
         status: "Success",
         message: "Products fetched successfully",
@@ -178,18 +179,6 @@ class ProductController implements GlobalController {
   ): Promise<void> => {
     try {
       const product = await this.Productservice.fetchProductById(req.params.id);
-
-      // Permission check: ensure product's market is in user's allowed markets
-      const allowed = req.markets?.some(
-        (m) => m.toString() === product.market.toString(),
-      );
-      if (!allowed) {
-        throw new HttpException(
-          403,
-          "Forbidden",
-          "You do not have permission to view this product's market",
-        );
-      }
 
       res.status(200).json({
         status: "Success",
