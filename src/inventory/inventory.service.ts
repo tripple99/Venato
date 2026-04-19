@@ -58,7 +58,7 @@ class InventoryService {
           new: true,
           runValidators: true,
         },
-      );
+      ).populate("productId", "name unit").populate("preferredMarket", "name location");
 
       return updatedInventory;
     } catch (error) {
@@ -279,7 +279,41 @@ class InventoryService {
       // 5. Calculate Values and Percentages
       {
         $addFields: {
-          currentValue: { $multiply: ["$quantity", "$productDetails.price"] },
+          unitFactor: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$unit", "mudu"] }, then: 1.25 },
+                { case: { $eq: ["$unit", "tiya"] }, then: 0.125 },
+                { case: { $eq: ["$unit", "litre"] }, then: 0.9 },
+                { case: { $eq: ["$unit", "kg"] }, then: 1.0 },
+                { case: { $eq: ["$unit", "tonne"] }, then: 1000.0 },
+              ],
+              default: 1.0,
+            },
+          },
+          productUnitFactor: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$productDetails.unit", "mudu"] }, then: 1.25 },
+                { case: { $eq: ["$productDetails.unit", "tiya"] }, then: 0.125 },
+                { case: { $eq: ["$productDetails.unit", "litre"] }, then: 0.9 },
+                { case: { $eq: ["$productDetails.unit", "kg"] }, then: 1.0 },
+                { case: { $eq: ["$productDetails.unit", "tonne"] }, then: 1000.0 },
+              ],
+              default: 1.0,
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          currentValue: {
+            $multiply: [
+              "$quantity",
+              { $divide: ["$unitFactor", "$productUnitFactor"] },
+              "$productDetails.price",
+            ],
+          },
           previousPrice: {
             $ifNull: ["$previousSnapshot.price", "$productDetails.price"],
           },

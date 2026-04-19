@@ -10,7 +10,8 @@ import AuditLogService from "../resources/audit-logs/audit-log.service";
 import { AuthRole } from "../resources/auths/auth.interface";
 import mongoose from "mongoose";
 import logger from "../utils/logger";
-
+import { PaginationResult, } from "../interface/pagination.interface";
+import {createPaginatedQuerySchema,buildSortOptions,createPaginatedResult,paginationQuery} from "../utils/pagination";
 
 class AlertService {
     private queueService = new AgendaQueueService();
@@ -43,7 +44,7 @@ class AlertService {
                 metadata: { productId, targetValue, condition }
             });
             
-            return savedAlert;
+            return savedAlert.populate("productId", "name price market");
         } catch (error: any) {
              await this.logs.logAction({
                 actorId: alert.user,
@@ -59,9 +60,30 @@ class AlertService {
         }
     }
 
-    async getAlerts(userId: string) {
+    async getAlerts(userId: string,params:any) {
         try {
-            return await alertModel.find({ user: userId });
+            const pagination = paginationQuery(params);
+            const sortOptions = buildSortOptions(
+                pagination.sortBy,
+                pagination.sortOrder,
+            ); 
+            const [alerts, totalCount] = await Promise.all([
+                alertModel
+                    .find({ user: userId })
+                    .populate("productId", "name price")
+                    .populate("market", "name location")
+                    .sort(sortOptions)
+                    .skip(pagination.skip)
+                    .limit(pagination.limit)
+                    .lean(),
+                alertModel.countDocuments({ user: userId }).lean(),
+            ]);
+            return createPaginatedResult(
+                alerts,
+                totalCount,
+                pagination.page,
+                pagination.limit,
+            );
         } catch (error) {
             throw new HttpException(400, "Failed","Failed to get alerts");
         }
@@ -92,7 +114,7 @@ class AlertService {
                 metadata: { alertId: id }
             });
 
-            return updatedAlert;
+            return updatedAlert.populate("productId", "name price market");
         } catch (error: any) {
             await this.logs.logAction({
                 actorId: userId,

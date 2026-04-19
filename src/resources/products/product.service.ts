@@ -1,14 +1,9 @@
 import HttpException from "../../exceptions/http.exception";
 import productModel from "./product.model";
-import mongoose from "mongoose";
 import marketModel from "../markets/market.model";
 import { IMarketProduct } from "./product.interface";
 import { IMarketData } from "../markets/market.interface";
-import {
-  PaginationOptions,
-  PaginationMetaData,
-  PaginationResult,
-} from "../../interface/pagination.interface";
+import { PaginationResult } from "../../interface/pagination.interface";
 import { PaginationQuery } from "../../interface/pagination.interface";
 import {
   buildSortOptions,
@@ -16,46 +11,47 @@ import {
   paginationQuery,
 } from "../../utils/pagination";
 import PriceSnapshotService from "../../price-snapshot/price.service";
-import { Types, } from "mongoose";
+import { Types } from "mongoose";
+
 import { Source } from "../../price-snapshot/price.interface";
 class ProductService {
   private priceSnapShotService: PriceSnapshotService =
     new PriceSnapshotService();
 
-  public async create(
-    product: IMarketProduct,
-  ): Promise<IMarketProduct> {
+  public async create(product: IMarketProduct): Promise<IMarketProduct> {
     try {
       const marketId = product.market || (product as any).marketId;
       const market = await marketModel.findById(marketId);
       if (!market)
         throw new HttpException(404, "Not found", "Market doesn't exist");
-      const isProduct = await productModel.findOne({ name: product.name, market: marketId });
+      const isProduct = await productModel.findOne({
+        name: product.name,
+        market: marketId,
+      });
       if (isProduct)
-        throw new HttpException(404, "Not found", "Product already exist in this market");
+        throw new HttpException(
+          404,
+          "Not found",
+          "Product already exist in this market",
+        );
       const newProduct = new productModel({
         ...product,
-        market: marketId
+        market: marketId,
       });
       const savedProduct = await newProduct.save();
-   
-      if(savedProduct){
+
+      if (savedProduct) {
         await this.priceSnapShotService.create({
           productId: savedProduct.id,
           marketId: market.id,
           price: product.price,
-          source:Source.Created,
+          source: Source.Created,
           timestamp: new Date(),
-         
         });
       }
       return savedProduct;
     } catch (error) {
-      throw new HttpException(
-        404,
-        "failed",
-        `failed to create product ${error}`,
-      );
+      throw new HttpException(400, "failed", `failed to create product`);
     }
   }
   public async fetchProductById(uid: string): Promise<IMarketProduct> {
@@ -96,11 +92,7 @@ class ProductService {
         pagination.limit,
       );
     } catch (error) {
-      throw new HttpException(
-        400,
-        "failed",
-        `Failed to fetch user query`,
-      );
+      throw new HttpException(400, "failed", `Failed to fetch user query`);
     }
   }
   public async fetchProductsByMarket(
@@ -118,7 +110,7 @@ class ProductService {
       const [markets, totalCount] = await Promise.all([
         productModel
           .find({ market: filter })
-          .sort({createdAt: -1})
+          .sort({ createdAt: -1 })
           .skip(pagination.skip)
           .limit(pagination.limit)
           .lean(),
@@ -131,29 +123,31 @@ class ProductService {
         pagination.limit,
       );
     } catch (error) {
-      throw new HttpException(
-        400,
-        "failed",
-        `failed to fetch user query `,
-      );
+      throw new HttpException(400, "failed", `failed to fetch user query `);
     }
   }
 
-  public async fetchAllProduct(query:any={}): Promise<PaginationResult<IMarketProduct>> {
+  public async fetchAllProduct(
+    query: any = {},
+  ): Promise<PaginationResult<IMarketProduct>> {
     try {
       const pagination = paginationQuery(query);
       const sortOptions = buildSortOptions(
         pagination.sortBy,
         pagination.sortOrder,
-      ); 
+      );
+      const filter = {
+        ...(query.marketId && { market: query.marketId }),
+      };
+
       const [products, totalCount] = await Promise.all([
         productModel
-          .find()
+          .find(filter).populate("market","name location")
           .sort(sortOptions)
           .skip(pagination.skip)
           .limit(pagination.limit)
           .lean(),
-        productModel.countDocuments().lean(),
+        productModel.countDocuments(filter),
       ]);
       return createPaginatedResult(
         products,
@@ -162,27 +156,31 @@ class ProductService {
         pagination.limit,
       );
     } catch (error) {
-      throw new HttpException(
-        400,
-        "failed",
-        `failed to fetch products `,
-      );
+      throw new HttpException(400, "failed", `failed to fetch products `);
     }
   }
-  public async getProducts(uid: any,query:any={}): Promise<PaginationResult<IMarketProduct>> {
+  public async getProducts(
+    uid: any,
+    query: any = {},
+  ): Promise<PaginationResult<IMarketProduct>> {
     try {
       const pagination = paginationQuery(query);
       const sortOptions = buildSortOptions(
         pagination.sortBy,
         pagination.sortOrder,
-      ); 
-      const [products, totalCount] = await Promise.all([productModel.find({
-        market: uid,
-      }).sort(sortOptions).populate("market","name location")
+      );
+      const [products, totalCount] = await Promise.all([
+        productModel
+          .find({
+            market: uid,
+          })
+          .sort(sortOptions)
+          .populate("market", "name location")
           .skip(pagination.skip)
           .limit(pagination.limit)
           .lean(),
-        productModel.countDocuments({market: uid}).lean(),]);
+        productModel.countDocuments({ market: uid }).lean(),
+      ]);
       //  if(!products) throw new HttpException(401,"Not found","Product doesn't exist")
       return createPaginatedResult(
         products,
@@ -191,11 +189,7 @@ class ProductService {
         pagination.limit,
       );
     } catch (error) {
-      throw new HttpException(
-        400,
-        "Failed",
-        `Failed to fetch products `,
-      );
+      throw new HttpException(400, "Failed", `Failed to fetch products `);
     }
   }
   public async update(
@@ -205,17 +199,14 @@ class ProductService {
     try {
       const findMarket = await productModel.findById(uid);
       if (!findMarket)
-        throw new HttpException(
-          404,
-          "Not Found",
-          "Product doesn't exist",
-        );
+        throw new HttpException(404, "Not Found", "Product doesn't exist");
       const updatedProduct = await productModel
         .findByIdAndUpdate(
           uid,
           { $set: { ...data } },
           { new: true, runValidators: true },
-        ).populate("market","name location")
+        )
+        .populate("market", "name location")
         .catch((err) => {
           if (err.code === 11000) {
             throw new HttpException(
@@ -226,14 +217,13 @@ class ProductService {
           }
           throw err;
         });
-      
-       if(findMarket.price !== data.price){
-      
-    const snapshot =   await this.priceSnapShotService.update(uid,{
-          productId:new Types.ObjectId(uid),
+
+      if (findMarket.price !== data.price) {
+        const snapshot = await this.priceSnapShotService.update(uid, {
+          productId: new Types.ObjectId(uid),
           marketId: new Types.ObjectId(data.market),
           price: data.price,
-          source:Source.Updated,
+          source: Source.Updated,
           timestamp: new Date(),
         });
       }
@@ -242,11 +232,7 @@ class ProductService {
         throw new HttpException(404, "Not found", "Product doesn't exist");
       return updatedProduct;
     } catch (error) {
-      throw new HttpException(
-        400,
-        "failed",
-        `failed to update product ${error}`,
-      );
+      throw new HttpException(400, "failed", `failed to update product `);
     }
   }
 
@@ -262,21 +248,17 @@ class ProductService {
       //     "Unauthorised",
       //     "User can't perform CRUD opertation to this product",
       //   );
-      
-      const priceSnapshot = await this.priceSnapShotService.update(uid,{
-        source:Source.Deleted,
+
+      const priceSnapshot = await this.priceSnapShotService.update(uid, {
+        source: Source.Deleted,
         timestamp: new Date(),
       });
-      const deleteProd = await productModel.findOneAndDelete({_id:uid});
+      const deleteProd = await productModel.findOneAndDelete({ _id: uid });
       if (!deleteProd)
         throw new HttpException(404, "Not found", "Product  doesn't exist");
       return deleteProd;
     } catch (error) {
-      throw new HttpException(
-        400,
-        "failed",
-        `failed to delete product ${error}`,
-      );
+      throw new HttpException(400, "failed", `failed to delete product `);
     }
   }
 }

@@ -32,8 +32,8 @@ const allowedMarket = (source: "params" | "body" | "query") => {
 
       // 3. Extract the market ID
       // Fallback: Check for 'id' if 'marketId' is missing, but 'marketId' is preferred
-      const targetMarketId = req[source]?.marketId || req[source]?.id;
-
+      const targetMarketId = req[source]?.marketId || req[source]?.id ;
+     
       if (!targetMarketId) {
         return next(new HttpException(400, "Bad Request", `Market identification missing in ${source}`));
       }

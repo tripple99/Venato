@@ -20,7 +20,7 @@ class AuthControllers implements GlobalController{
         this.router.post('/',schemaValidator(validator.register),this.register),
         this.router.post('/login',schemaValidator(validator.login),this.login),
         this.router.post('/refresh',schemaValidator(validator.refreshToken),this.refreshToken),
-        this.router.get('/logout',authenticate,this.logout),
+        this.router.post('/logout',authenticate,this.logout),
         this.router.post("/forgot-password",schemaValidator(validator.forgotPassword),this.forgotPassword)
         this.router.post("/validate-Otp",schemaValidator(validator.validateOtp),this.validateOtp)
         this.router.patch("/reset-password",schemaValidator(validator.updatePassword),this.resetPassword)

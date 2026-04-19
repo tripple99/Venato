@@ -14,6 +14,7 @@ class StatsService {
  public async getStats(role: AuthRole, userId: string): Promise<StatsResult> {
   try {
     // 1. Define timeframe for "Recent Activity" (e.g., last 24 hours)
+
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     if (role === AuthRole.superAdmin) {
@@ -76,6 +77,9 @@ class StatsService {
         recentProducts,
       };
     }
+    // StatsController.ts
+
+
 
     if (role === AuthRole.User) {
       const [watchlistCount, activeAlerts, inventoryStats] = await Promise.all([
@@ -86,8 +90,9 @@ class StatsService {
         alertModel.countDocuments({ user: userId }),
 
         // 3. Aggregate total inventory value, historical value, and product count
+        
         inventoryModel.aggregate([
-          { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+          { $match: { userId: new mongoose.Types.ObjectId(userId)} },
           {
             $lookup: {
               from: "products",
@@ -104,7 +109,7 @@ class StatsService {
               pipeline: [
                 { $match: { $expr: { $eq: ["$productId", "$$prodId"] } } },
                 { $sort: { timestamp: -1 } },
-                { $skip: 1 }, // Get the price immediately before the current one
+                { $skip: 1 },
                 { $limit: 1 },
               ],
               as: "previousSnapshot",
@@ -117,15 +122,50 @@ class StatsService {
             },
           },
           {
+            $addFields: {
+              unitFactor: {
+                $switch: {
+                  branches: [
+                    { case: { $eq: ["$unit", "mudu"] }, then: 1.25 },
+                    { case: { $eq: ["$unit", "tiya"] }, then: 0.125 },
+                    { case: { $eq: ["$unit", "litre"] }, then: 0.9 },
+                    { case: { $eq: ["$unit", "kg"] }, then: 1.0 },
+                    { case: { $eq: ["$unit", "tonne"] }, then: 1000.0 },
+                  ],
+                  default: 1.0,
+                },
+              },
+              productUnitFactor: {
+                $switch: {
+                  branches: [
+                    { case: { $eq: ["$productInfo.unit", "mudu"] }, then: 1.25 },
+                    { case: { $eq: ["$productInfo.unit", "tiya"] }, then: 0.125 },
+                    { case: { $eq: ["$productInfo.unit", "litre"] }, then: 0.9 },
+                    { case: { $eq: ["$productInfo.unit", "kg"] }, then: 1.0 },
+                    { case: { $eq: ["$productInfo.unit", "tonne"] }, then: 1000.0 },
+                  ],
+                  default: 1.0,
+                },
+              },
+            },
+          },
+          {
             $group: {
               _id: null,
               totalValue: {
-                $sum: { $multiply: ["$quantity", "$productInfo.price"] },
+                $sum: {
+                  $multiply: [
+                    "$quantity",
+                    { $divide: ["$unitFactor", "$productUnitFactor"] },
+                    "$productInfo.price",
+                  ],
+                },
               },
               previousTotalValue: {
                 $sum: {
                   $multiply: [
                     "$quantity",
+                    { $divide: ["$unitFactor", "$productUnitFactor"] },
                     {
                       $ifNull: ["$previousSnapshot.price", "$productInfo.price"],
                     },

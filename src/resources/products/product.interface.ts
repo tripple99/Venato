@@ -1,8 +1,11 @@
 import {Types} from "mongoose"
 
 export enum UnitValue{
-  MUDU = .75,
-  TIYA = 1.5,
+  MUDU = 1.25,
+  TIYA = 0.125,
+  LITRE = 0.9,
+  KG = 1,
+  TONNE = 1000,
 }
 
 export enum IUnit{
@@ -10,6 +13,7 @@ export enum IUnit{
   LITRE = "litre",
   MUDU = "mudu",
   TIYA = "tiya",
+  TONNE = "tonne",
 }
 export enum ICategory{
   Grains = "Grains",
@@ -33,6 +37,7 @@ export interface IMarketProduct {
   quantityAvailable?: number;
   description?: string;
   market: Types.ObjectId;
+  images:string[];
   // priceHistory:PriceHistory[],
   createdBy:Types.ObjectId;
   updatedBy:Types.ObjectId;

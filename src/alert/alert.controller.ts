@@ -51,7 +51,7 @@ class AlertController implements GlobalController{
 
   getAlerts = async (req:Request,res:Response,next:NextFunction)=>{
     try {
-      const alerts = await this.alertService.getAlerts(req.user.id);
+      const alerts = await this.alertService.getAlerts(req.user.id,req.params);
       res.status(200).json({
         status:"success",
         message:"Alerts fetched successfully",

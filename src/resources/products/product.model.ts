@@ -38,7 +38,12 @@ const productSchema = new Schema<IMarketProduct>({
     type:Schema.Types.ObjectId,
     ref:'Auth',
     required:true
-  }
+  },
+  images:{
+    type:[String],
+    default:[]
+  },
+ 
 }, { timestamps: true })
 
 productSchema.index({ name: 1, market: 1 }, { unique: true });

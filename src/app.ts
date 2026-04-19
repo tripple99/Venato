@@ -274,8 +274,37 @@ private handleProperMongoDBId(): void {
     };
     process.on("SIGTERM", () => shutdown("SIGTERM"));
     process.on("SIGINT", () => shutdown("SIGINT"));
-    process.on("unhandledRejection", (reason, promise) => {
-      logger.error("Unhandled Rejection:", { reason, promise });
+    process.on("unhandledRejection", (reason: any) => {
+      function normalizeError(reason: unknown) {
+  if (reason instanceof Error) {
+    logger.error("Unhandled Rejection:", { 
+        message: reason?.message || reason, 
+        stack: reason?.stack,
+        reason 
+      });
+    return {
+      message: reason.message,
+      stack: reason.stack,
+      name: reason.name,
+    };
+  }
+
+  if (typeof reason === "string") {
+    
+    return { message: reason };
+  }
+
+  try {
+    return {
+      message: JSON.stringify(reason),
+    };
+  } catch {
+    return {
+      message: String(reason),
+    };
+  }
+}
+     
     });
   }
 
