@@ -1,5 +1,5 @@
 import { Document, Schema } from "mongoose";
-import { IUnit } from "../resources/products/product.interface";
+import { IUnit } from "../products/product.interface";
 
 /**
  * Interface representing the Inventory model for the Venato platform.

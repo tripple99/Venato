@@ -161,7 +161,7 @@ class AuthService {
         metadata: { email: email, error: error.message },
         }
       )
-      throw new HttpException(404, "failed", `User login failed ${error}`);
+      throw new HttpException(404, "failed", `User login failed `);
     }
   }
 
@@ -214,7 +214,7 @@ class AuthService {
           userAgent,
           metadata: { provider, error: error.message }
         });
-        throw new HttpException(400, "failed", `OAuth login failed ${error}`);
+        throw new HttpException(400, "failed", `OAuth login failed `);
     }
   }
 
@@ -258,7 +258,7 @@ class AuthService {
       throw new HttpException(
         404,
         "failed",
-        `Failed to generate a new accessToken ${error}`,
+        `Failed to generate a new accessToken `,
       );
     }
   }
@@ -533,7 +533,7 @@ class AuthService {
       throw new HttpException(
         400,
         "failed",
-        `Failed to reset password ${error}`,
+        `Failed to reset password`,
       );
     }
   }
@@ -573,7 +573,7 @@ class AuthService {
         userAgent,
         metadata: { error: error.message }
       });
-      throw new HttpException(400, "failed", `User logout failed ${error}`);
+      throw new HttpException(400, "failed", `User logout failed`);
     }
   }
 

@@ -10,14 +10,14 @@ import {
   createPaginatedResult,
   paginationQuery,
 } from "../../utils/pagination";
-import PriceSnapshotService from "../../price-snapshot/price.service";
+import PriceSnapshotService from "../price-snapshot/price.service";
 import { Types } from "mongoose";
 import watchListModel from "../watch-List/watch-list.model";
-import { Source } from "../../price-snapshot/price.interface";
+import { Source } from "../price-snapshot/price.interface";
 class ProductService {
   private priceSnapShotService: PriceSnapshotService =
     new PriceSnapshotService();
- private watchListModel: any = watchListModel;
+  private watchListModel: any = watchListModel;
   public async create(product: IMarketProduct): Promise<IMarketProduct> {
     try {
       const marketId = product.market || (product as any).marketId;
@@ -56,7 +56,9 @@ class ProductService {
   }
   public async fetchProductById(uid: string): Promise<IMarketProduct> {
     try {
-      const product = await productModel.findById(uid).populate("market", "name location");
+      const product = await productModel
+        .findById(uid)
+        .populate("market", "name location");
       if (!product)
         throw new HttpException(401, "Not found", "Product doesn't exist");
       return product;
@@ -132,7 +134,7 @@ class ProductService {
     userId: string,
   ): Promise<PaginationResult<IMarketProduct>> {
     console.log(userId);
-    
+
     try {
       const pagination = paginationQuery(query);
       const sortOptions = buildSortOptions(
@@ -141,7 +143,8 @@ class ProductService {
       );
       const filter: any = {
         ...(query.marketId && { market: query.marketId }),
-        ...(query.category && query.category !== "all" && { category: query.category }),
+        ...(query.category &&
+          query.category !== "all" && { category: query.category }),
       };
 
       // Add Price range filtering
@@ -166,7 +169,7 @@ class ProductService {
           .select("_id");
 
         const marketIds = matchingMarkets.map((m) => m._id);
-      
+
         filter.$or = [
           { name: searchRegex },
           { description: searchRegex },
@@ -177,7 +180,8 @@ class ProductService {
       }
       const [products, totalCount] = await Promise.all([
         productModel
-          .find(filter).populate("market","name location")
+          .find(filter)
+          .populate("market", "name location")
           .sort(sortOptions)
           .skip(pagination.skip)
           .limit(pagination.limit)

@@ -21,7 +21,7 @@ function errorMiddleware(error:HttpException,req:Request,res:Response,_next :Nex
             success: false,
             message,
             ...(error.errors ? { errors: error.errors } : {}),
-            ...(process.env.NODE_ENV === 'development' ? { stack: error.stack } : {})
+            // ...(process.env.NODE_ENV === 'development' ? { stack: error.stack } : {})
           };
       
           res.status(statusCode).json(response);
