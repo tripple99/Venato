@@ -17,6 +17,7 @@ import WatchListControllers from './resources/watch-List/watch-list.controller';
 import InventoryController from './inventory/inventory.controller';
 import AlertController from './alert/alert.controller';
 import AnalyticsController from './analytics/analytics.controller';
+import AuditLogController from './resources/audit-logs/audit-log-controller';
 import './resources/audit-logs/audit-queues/audit-queues';
 
 
@@ -70,6 +71,7 @@ async function startApp() {
                     new InventoryController(),
                     new AlertController(),
                     new AnalyticsController(),
+                    new AuditLogController(),
                 ], 
                 port,
             )

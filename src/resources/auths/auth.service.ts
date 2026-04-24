@@ -71,9 +71,9 @@ class AuthService {
         ipAddress: ipAddress,
         userAgent: userAgent,  
         actorId: createUser._id,
-        actorType: AuthRole.User,
+        actorType: createUser.userRole,
         action: "USER_REGISTRATION",
-        entityType: AuthRole.User,
+        entityType: createUser.userRole,
         entityId: createUser._id,
         status: "SUCCESS",
         metadata: { email: createUser.email, ipAddress: ipAddress },
@@ -84,9 +84,9 @@ class AuthService {
       await this.logs.logAction(
         {
         actorId:data.id,  
-        actorType: AuthRole.User,
+        actorType: data.userRole,
         action: "USER_REGISTRATION",
-        entityType: AuthRole.User,
+        entityType: data.userRole,
         status: "FAILED",
         metadata: { email: data.email, error: error.message },
         }
@@ -137,9 +137,9 @@ class AuthService {
       await this.logs.logAction(
         {
         actorId:user.id,  
-        actorType: AuthRole.User,
+        actorType: user.userRole,
         action: "USER_LOGIN",
-        entityType: AuthRole.User,
+        entityType: user.userRole,
         entityId: user.id,
         status: "SUCCESS",
         ipAddress,
@@ -152,9 +152,9 @@ class AuthService {
       await this.logs.logAction(
         {
         actorId:user?.id,  
-        actorType: AuthRole.User,
+        actorType: user?.userRole || AuthRole.User,
         action: "USER_LOGIN",
-        entityType: AuthRole.User,
+        entityType: user?.userRole || AuthRole.User,
         status: "FAILED",
         ipAddress,
         userAgent,
@@ -178,7 +178,7 @@ class AuthService {
         await newUser.save();
         await this.logs.logAction({
           actorId: newUser._id,
-          actorType: AuthRole.User,
+          actorType: newUser.userRole,
           action: "OAUTH_REGISTRATION",
           status: "SUCCESS",
           ipAddress,
@@ -196,7 +196,7 @@ class AuthService {
         await user.save();
         await this.logs.logAction({
           actorId: user._id,
-          actorType: AuthRole.User,
+          actorType: user.userRole,
           action: "OAUTH_LOGIN",
           status: "SUCCESS",
           ipAddress,
@@ -207,7 +207,7 @@ class AuthService {
       }
     } catch (error: any) {
        await this.logs.logAction({
-          actorType: AuthRole.User,
+          actorType: AuthRole.User, // Default for pre-login error
           action: "OAUTH_LOGIN",
           status: "FAILED",
           ipAddress,
@@ -238,7 +238,7 @@ class AuthService {
       await user.save();
       await this.logs.logAction({
         actorId: user._id,
-        actorType: AuthRole.User,
+        actorType: user.userRole,
         action: "TOKEN_REFRESH",
         status: "SUCCESS",
         ipAddress,
@@ -295,7 +295,7 @@ class AuthService {
       
       await this.logs.logAction({
         actorId: user._id,
-        actorType: AuthRole.User,
+        actorType: user.userRole,
         action: "PASSWORD_RESET_REQUEST",
         status: "SUCCESS",
         ipAddress,
@@ -311,7 +311,7 @@ class AuthService {
     } catch (error: any) {
       await this.logs.logAction({
         actorId: user?._id,
-        actorType: AuthRole.User,
+        actorType: user?.userRole || AuthRole.User,
         action: "PASSWORD_RESET_REQUEST",
         status: "FAILED",
         ipAddress,
@@ -365,7 +365,7 @@ class AuthService {
       
       await this.logs.logAction({
         actorId: user._id,
-        actorType: AuthRole.User,
+        actorType: user.userRole,
         action: "OTP_SENT",
         status: "SUCCESS",
         ipAddress,
@@ -381,7 +381,7 @@ class AuthService {
     } catch (error: any) {
       await this.logs.logAction({
         actorId: user?._id,
-        actorType: AuthRole.User,
+        actorType: user?.userRole || AuthRole.User,
         action: "OTP_SENT",
         status: "FAILED",
         ipAddress,
@@ -426,7 +426,7 @@ class AuthService {
       
       await this.logs.logAction({
         actorId: user._id,
-        actorType: AuthRole.User,
+        actorType: user.userRole,
         action: "OTP_VALIDATED",
         status: "SUCCESS",
         ipAddress,
@@ -455,7 +455,7 @@ class AuthService {
     } catch (error: any) {
        await this.logs.logAction({
         actorId: user?._id,
-        actorType: AuthRole.User,
+        actorType: user?.userRole || AuthRole.User,
         action: "OTP_VALIDATED",
         status: "FAILED",
         ipAddress,
@@ -512,7 +512,7 @@ class AuthService {
       
       await this.logs.logAction({
         actorId: user._id,
-        actorType: AuthRole.User,
+        actorType: user.userRole,
         action: "PASSWORD_RESET_COMPLETE",
         status: "SUCCESS",
         ipAddress,
@@ -523,7 +523,7 @@ class AuthService {
     } catch (error: any) {
       await this.logs.logAction({
         actorId: user?._id,
-        actorType: AuthRole.User,
+        actorType: user?.userRole || AuthRole.User,
         action: "PASSWORD_RESET_COMPLETE",
         status: "FAILED",
         ipAddress,
@@ -556,7 +556,7 @@ class AuthService {
       
       await this.logs.logAction({
         actorId: auth?.id,
-        actorType: AuthRole.User,
+        actorType: auth?.userRole || AuthRole.User,
         action: "USER_LOGOUT",
         status: "SUCCESS",
         ipAddress,
@@ -566,7 +566,7 @@ class AuthService {
     } catch (error: any) {
       await this.logs.logAction({
         actorId: auth?.id,
-        actorType: AuthRole.User,
+        actorType: auth?.userRole || AuthRole.User,
         action: "USER_LOGOUT",
         status: "FAILED",
         ipAddress,

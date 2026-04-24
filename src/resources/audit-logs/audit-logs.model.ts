@@ -5,7 +5,7 @@ import { IAuditLog } from "./audit-logs.interface";
 const AuditLogSchema = new mongoose.Schema<IAuditLog>({
   actorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: "Auth",
   },
 
   actorType: {

@@ -34,7 +34,7 @@ export interface IMarketProduct {
   unit: IUnit;
   price: number;
   category:ICategory;
-  quantityAvailable?: number;
+  quantityAvailable: number;
   description?: string;
   market: Types.ObjectId;
   images:string[];

@@ -41,7 +41,7 @@ class ProfileService {
 
       await this.logs.logAction({
         actorId: updatedProfile.uid.toString(),
-        actorType: AuthRole.User,
+        actorType: updatedProfile.roles || AuthRole.User,
         action: "PROFILE_UPDATED",
         entityType: "Profile",
         entityId: updatedProfile._id,
@@ -54,7 +54,7 @@ class ProfileService {
       return updatedProfile;
     } catch (error: any) {
        await this.logs.logAction({
-        actorType: AuthRole.User,
+        actorType: AuthRole.User, // Fallback for pre-update error
         action: "PROFILE_UPDATED",
         entityType: "Profile",
         status: "FAILED",
@@ -73,7 +73,7 @@ class ProfileService {
        
        await this.logs.logAction({
         actorId: actorId || userProfile.uid.toString(),
-        actorType: actorId ? AuthRole.superAdmin : AuthRole.User,
+        actorType: actorId ? AuthRole.superAdmin : (userProfile.roles || AuthRole.User),
         action: "PROFILE_DELETED",
         entityType: "Profile",
         entityId: userProfile._id,
@@ -86,7 +86,7 @@ class ProfileService {
        return userProfile
     } catch(error: any) {
        await this.logs.logAction({
-        actorType: AuthRole.User,
+        actorType: AuthRole.User, // Fallback for pre-delete error
         action: "PROFILE_DELETED",
         entityType: "Profile",
         status: "FAILED",

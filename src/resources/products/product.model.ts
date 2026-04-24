@@ -23,6 +23,10 @@ const productSchema = new Schema<IMarketProduct>({
     ref: 'Markets',
     required: true
   },
+  quantityAvailable:{
+    type:Number,
+    default:0
+  },
   // priceHistory:[
   //   {
   //     amount:Number,

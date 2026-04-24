@@ -12,12 +12,13 @@ import mongoose from "mongoose";
 import logger from "../utils/logger";
 import { PaginationResult, } from "../interface/pagination.interface";
 import {createPaginatedQuerySchema,buildSortOptions,createPaginatedResult,paginationQuery} from "../utils/pagination";
+import Mailtemplates from "../resources/mail/mail.templates";
 
 class AlertService {
     private queueService = new AgendaQueueService();
     private logs = new AuditLogService();
     
-    async createAlert(alert: any, ipAddress?: string, userAgent?: string) {
+    async createAlert(alert: any, userRole: AuthRole, ipAddress?: string, userAgent?: string) {
         try {
             const {productId, targetValue, condition, marketId, user, currency, cooldownMinutes, isActive} = alert;
             const newAlert = new alertModel({
@@ -34,7 +35,7 @@ class AlertService {
             
             await this.logs.logAction({
                 actorId: user,
-                actorType: AuthRole.User,
+                actorType: userRole,
                 action: "ALERT_CREATED",
                 entityType: "Alert",
                 entityId: savedAlert._id,
@@ -44,11 +45,13 @@ class AlertService {
                 metadata: { productId, targetValue, condition }
             });
             
-            return savedAlert.populate("productId", "name price market");
+            return savedAlert.populate([
+                { path: "productId", select: "name price market" }
+            ]);
         } catch (error: any) {
              await this.logs.logAction({
                 actorId: alert.user,
-                actorType: AuthRole.User,
+                actorType: userRole,
                 action: "ALERT_CREATED",
                 entityType: "Alert",
                 status: "FAILED",
@@ -97,14 +100,17 @@ class AlertService {
         }
     }
 
-    async updateAlert(id: string, userId: string, alert: IAlert, ipAddress?: string, userAgent?: string) {
+    async updateAlert(id: string, userId: string, userRole: AuthRole, alert: IAlert, ipAddress?: string, userAgent?: string) {
         try {
-            const updatedAlert = await alertModel.findOneAndUpdate({ _id: id, user: userId }, alert, { new: true });
+            const updatedAlert = await alertModel.findOneAndUpdate({ _id: id, user: userId }, alert, { new: true })
+                .populate("productId", "name price")
+                .populate("market", "name location");
+
             if (!updatedAlert) throw new HttpException(404, "Not found", "Alert not found");
 
             await this.logs.logAction({
                 actorId: userId,
-                actorType: AuthRole.User,
+                actorType: userRole,
                 action: "ALERT_UPDATED",
                 entityType: "Alert",
                 entityId: updatedAlert._id,
@@ -114,11 +120,11 @@ class AlertService {
                 metadata: { alertId: id }
             });
 
-            return updatedAlert.populate("productId", "name price market");
+            return updatedAlert;
         } catch (error: any) {
             await this.logs.logAction({
                 actorId: userId,
-                actorType: AuthRole.User,
+                actorType: userRole,
                 action: "ALERT_UPDATED",
                 entityType: "Alert",
                 entityId: new mongoose.Types.ObjectId(id),
@@ -131,7 +137,7 @@ class AlertService {
         }
     }
 
-    async deleteAlert(id: string, userId?: string, ipAddress?: string, userAgent?: string) {
+    async deleteAlert(id: string, userId: string, userRole: AuthRole, ipAddress?: string, userAgent?: string) {
         try {
             const query = userId ? { _id: id, user: userId } : { _id: id };
             const deletedAlert = await alertModel.findOneAndDelete(query);
@@ -139,7 +145,7 @@ class AlertService {
 
             await this.logs.logAction({
                 actorId: userId || deletedAlert.user.toString(),
-                actorType: userId ? AuthRole.User : AuthRole.superAdmin,
+                actorType: userRole,
                 action: "ALERT_DELETED",
                 entityType: "Alert",
                 entityId: deletedAlert._id,
@@ -153,7 +159,7 @@ class AlertService {
         } catch (error: any) {
              await this.logs.logAction({
                 actorId: userId,
-                actorType: AuthRole.User,
+                actorType: userRole,
                 action: "ALERT_DELETED",
                 entityType: "Alert",
                 entityId: new mongoose.Types.ObjectId(id),
@@ -226,11 +232,19 @@ class AlertService {
            
            await alertModel.findByIdAndUpdate(alert._id, { lastTriggeredAt: now });
            
+           let user = null;
            try {
-              const user = await authModel.findById(alert.user);
+              user = await authModel.findById(alert.user);
               const product = await productModel.findById(alert.productId);
               if (user && product) {
-                  const content = `<p>Your alert for <b>${product.name}</b> has been triggered!</p><p>The price is now <b>${snapshot.price}</b> which is ${alert.condition} your target of ${alert.targetValue}.</p>`;
+                  const conditionText = alert.condition === "above" ? "RISEN ABOVE" : alert.condition === "below" ? "DROPPED BELOW" : "REACHED";
+                  const content = Mailtemplates.priceAlertTemplate
+                      .replace(/{{PRODUCT_NAME}}/g, product.name)
+                      .replace(/{{CURRENT_PRICE}}/g, snapshot.price.toString())
+                      .replace(/{{TARGET_VALUE}}/g, alert.targetValue.toString())
+                      .replace(/{{CONDITION}}/g, conditionText)
+                      .replace(/{{CURRENCY}}/g, alert.currency || "₦");
+                  
                   await this.queueService.sendNow(
                       user.email,
                       "Venato Price Alert Triggered",
@@ -240,7 +254,7 @@ class AlertService {
 
                   await this.logs.logAction({
                       actorId: user._id,
-                      actorType: AuthRole.User,
+                      actorType: user.userRole,
                       action: "ALERT_TRIGGERED",
                       entityType: "Alert",
                       entityId: alert._id,
@@ -252,7 +266,7 @@ class AlertService {
               logger.error("Failed to queue alert email", { error: e.message, stack: e.stack });
               await this.logs.logAction({
                 actorId: alert.user,
-                actorType: AuthRole.User,
+                actorType: user?.userRole || AuthRole.User,
                 action: "ALERT_TRIGGERED",
                 entityType: "Alert",
                 entityId: alert._id,

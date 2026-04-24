@@ -26,8 +26,9 @@ class AccessControlService {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<IAuth> {
+    let isVerified = null;
     try {
-      const isVerified = await authModel.findById(uid);
+      isVerified = await authModel.findById(uid);
       if (!isVerified?.isVerified || isVerified.userRole !== AuthRole.Admin) throw new HttpException(400, "failed", "This user is not verified and is not an Administrator");
        
       const user = await authModel.findByIdAndUpdate(
@@ -57,7 +58,7 @@ class AccessControlService {
         actorId: adminId,
         actorType: AuthRole.superAdmin,
         action: "MARKET_ACCESS_GRANTED",
-        entityType: AuthRole.User,
+        entityType: user.userRole,
         entityId: user._id,
         status: "SUCCESS",
         ipAddress,
@@ -71,7 +72,7 @@ class AccessControlService {
         actorId: adminId,
         actorType: AuthRole.superAdmin,
         action: "MARKET_ACCESS_GRANTED",
-        entityType: AuthRole.User,
+        entityType: isVerified?.userRole || AuthRole.User,
         status: "FAILED",
         ipAddress,
         userAgent,
@@ -82,8 +83,9 @@ class AccessControlService {
   }
 
   public async grantRole(uid: string, role: AuthRole, adminId?: string, ipAddress?: string, userAgent?: string): Promise<IAuth> {
+    let isVerified = null;
     try {
-      const isVerified = await authModel.findById(uid);
+      isVerified = await authModel.findById(uid);
       if (!isVerified?.isVerified)
         throw new HttpException(400, "failed", "User is not verified");
       
@@ -115,7 +117,7 @@ class AccessControlService {
         actorId: adminId,
         actorType: AuthRole.superAdmin,
         action: "ROLE_GRANTED",
-        entityType: AuthRole.User,
+        entityType: user.userRole,
         entityId: (user as any)._id,
         status: "SUCCESS",
         ipAddress,
@@ -129,7 +131,7 @@ class AccessControlService {
         actorId: adminId,
         actorType: AuthRole.superAdmin,
         action: "ROLE_GRANTED",
-        entityType: AuthRole.User,
+        entityType: isVerified?.userRole || AuthRole.User,
         status: "FAILED",
         ipAddress,
         userAgent,
@@ -155,7 +157,7 @@ class AccessControlService {
         actorId: adminId,
         actorType: AuthRole.superAdmin,
         action: "USER_VERIFIED",
-        entityType: AuthRole.User,
+        entityType: user.userRole,
         entityId: user._id,
         status: "SUCCESS",
         ipAddress,
@@ -169,7 +171,7 @@ class AccessControlService {
         actorId: adminId,
         actorType: AuthRole.superAdmin,
         action: "USER_VERIFIED",
-        entityType: AuthRole.User,
+        entityType: AuthRole.User, // Fallback
         status: "FAILED",
         ipAddress,
         userAgent,
@@ -204,7 +206,7 @@ class AccessControlService {
         actorId: adminId,
         actorType: AuthRole.superAdmin,
         action: "ACCESS_REVOKED",
-        entityType: AuthRole.User,
+        entityType: user.userRole,
         entityId: user._id,
         status: "SUCCESS",
         ipAddress,
@@ -218,7 +220,7 @@ class AccessControlService {
         actorId: adminId,
         actorType: AuthRole.superAdmin,
         action: "ACCESS_REVOKED",
-        entityType: AuthRole.User,
+        entityType: AuthRole.User, // Fallback
         status: "FAILED",
         ipAddress,
         userAgent,

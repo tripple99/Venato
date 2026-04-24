@@ -6,6 +6,7 @@ import { buildSortOptions, createPaginatedResult, paginationQuery } from "../../
 import { AuthRole } from "../auths/auth.interface";
 import { agenda } from "../../helpers/agenda";
 import logger from "../../utils/logger";
+import authModel from "../auths/auth.model";
 
 
 export default class AuditLogService {
@@ -21,7 +22,7 @@ export default class AuditLogService {
     }
 
 
-    public async getAllAuditLogs(query: PaginationQuery): Promise<PaginationResult<IAuditLog>> {
+    public async getAllAuditLogs(query:any): Promise<PaginationResult<IAuditLog>> {
         try {
             const pagination = paginationQuery(query);
             const sortOptions = buildSortOptions(pagination.sortBy, pagination.sortOrder);

@@ -37,7 +37,7 @@ class AlertController implements GlobalController{
       if(!market) throw new HttpException(404,"Not found","market not found")
       
       const alertPayload = { ...req.body, user: req.user.id };
-      const alert = await this.alertService.createAlert(alertPayload, ipAddress, userAgent);
+      const alert = await this.alertService.createAlert(alertPayload, req.user.userRole, ipAddress, userAgent);
       res.status(201).json({
         status:"success",
         message:"Alert created successfully",
@@ -79,7 +79,7 @@ class AlertController implements GlobalController{
     try {
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
-      const alert = await this.alertService.updateAlert(req.params.id, req.user.id, req.body, ipAddress, userAgent);
+      const alert = await this.alertService.updateAlert(req.params.id, req.user.id, req.user.userRole, req.body, ipAddress, userAgent);
       res.status(200).json({
         status:"success",
         message:"Alert updated successfully",
@@ -95,7 +95,7 @@ class AlertController implements GlobalController{
     try {
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
-      const alert = await this.alertService.deleteAlert(req.params.id, req.user.id, ipAddress, userAgent);
+      const alert = await this.alertService.deleteAlert(req.params.id, req.user.id, req.user.userRole, ipAddress, userAgent);
       res.status(200).json({
         status:"success",
         message:"Alert deleted successfully",

@@ -20,9 +20,9 @@ const createProduct = z.object({
 const updateProduct = z.object({
   name:z.string().min(1,"Product name required").optional(),
   unit:z.enum(IUnit).optional(),
-  price: z.number().min(0, { message: "Number can't be less than 0" }).optional().transform((val) => Number(val)),
+  price: z.string().min(1, { message: "Price required" }).transform((val) => Number(val)).optional(),
   category: z.nativeEnum(ICategory).optional(),
-  quantityAvailable:z.number().min(0,{message:"Number can't be less than 0" }).optional().transform((val) => Number(val)),
+  quantityAvailable:z.string().min(1,{message:"Quantity available required" }).transform((val) => Number(val)).optional(),
   description:z.string().min(1,"Descrition required").optional(),
   marketId:z.string().min(1,"Market ID required"),
   images:z.array(z.string()).max(5,"Maximum 5 images allowed").optional(),
