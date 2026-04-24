@@ -8,15 +8,15 @@ async function connectDB(){
         serverSelectionTimeoutMS: 30000, // 30 seconds
         socketTimeoutMS: 45000, // 45 seconds
       };
-      const {MONGO_URI,MONGO_PASSWORD,MONGO_USER} = process.env
+      const {MONGO_PROD_URI,NODE_ENV,MONGO_URI} = process.env
       let connectedString:string;
    try {
     
-   if(!MONGO_URI){
+   if(!MONGO_URI && !MONGO_PROD_URI){
       logger.error("URI isn't defined");
     }
 
-    connectedString = MONGO_URI ?? 'mongodb://localhost:27017/Venato';
+    connectedString = (NODE_ENV === "production") ? MONGO_PROD_URI : MONGO_URI;
 
     
     mongoose.connection.on('connected',()=>{
