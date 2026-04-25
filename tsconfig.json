@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "esModuleInterop": true,
-    "module": "commonjs",
+    "module": "Node16",
+    "rootDir": ".",
     "noImplicitReturns": false,
     "noUnusedLocals": false,
     "outDir": "dist",
@@ -10,7 +11,7 @@
     "target": "es2017",
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "lib": ["es5", "es6", "dom", "dom.iterable"],
     "typeRoots": ["./node_modules/@types", "./@types"],
     "removeComments": false
