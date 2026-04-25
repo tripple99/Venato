@@ -73,7 +73,7 @@ class App {
     // this.configureSession();
     this.configureResponseTime();
     this.enforceHttps();
-    this.configureXssClean();
+    // this.configureXssClean();
     this.configureCors();
     this.configureWAF();
   }
