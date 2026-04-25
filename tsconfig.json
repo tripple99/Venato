@@ -1,23 +1,22 @@
 {
   "compilerOptions": {
     "esModuleInterop": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "commonjs",
     "noImplicitReturns": false,
     "noUnusedLocals": false,
-    "rootDir": "src",
     "outDir": "dist",
     "sourceMap": true,
     "strict": false,
-    "target": "es2022",
+    "target": "es2017",
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "lib": ["es2022"],
+    "moduleResolution": "node",
+    "lib": ["es5", "es6", "dom", "dom.iterable"],
     "typeRoots": ["./node_modules/@types", "./@types"],
     "removeComments": false
   },
   "compileOnSave": true,
-  "include": ["src/**/*", "src/types/express.d.ts", "seeders/**/*"],
+  "include": ["src", "src/types/express.d.ts", "seeders"],
   "exclude": ["node_modules"],
   "files": ["./src/utils/definitions/custom.d.ts"]
 }
