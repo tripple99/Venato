@@ -160,7 +160,8 @@ class App {
           "http:localhost:4000",
           "'http://127.0.0.1:4000",
           "http://localhost:5173",
-          "https://venato-frontend.vercel.app"
+          "https://venato-frontend.vercel.app",
+          "https://venato-frontend-flatoi29b-abdallah-muneer-umars-projects.vercel.app"
         ];
 
     interface corsConfiguration {
