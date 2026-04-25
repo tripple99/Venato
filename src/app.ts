@@ -73,7 +73,7 @@ class App {
     // this.configureSession();
     this.configureResponseTime();
     this.enforceHttps();
-    // this.configureXssClean();
+    this.configureXssClean();
     this.configureCors();
     this.configureWAF();
   }
@@ -102,6 +102,7 @@ class App {
     this.express.use(passport.session());
   }
   private configureRateLimiting(): void {
+    this.express.set('trust proxy', 1);
     this.express.use(
       rateLimit({
         windowMs: 15 * 60 * 1000,
