@@ -160,6 +160,7 @@ class App {
           "http:localhost:4000",
           "'http://127.0.0.1:4000",
           "http://localhost:5173",
+          "https://venato-eta.vercel.app"
         ];
 
     interface corsConfiguration {
