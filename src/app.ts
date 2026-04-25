@@ -154,15 +154,16 @@ class App {
     this.express.use(xssClean());
   }
   private configureCors(): void {
-    const allowedOrigins = process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.split(",")
-      : [
-          "http:localhost:4000",
-          "'http://127.0.0.1:4000",
-          "http://localhost:5173",
-          "https://venato-frontend.vercel.app",
-          "https://venato-frontend-flatoi29b-abdallah-muneer-umars-projects.vercel.app"
-        ];
+   const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : [
+      "http://localhost:4000", // Fixed: added //
+      "http://127.0.0.1:4000", // Fixed: removed stray '
+      "http://localhost:5173", // Default Vite port
+      "https://venato-frontend.vercel.app",
+      "https://venato-frontend-flatoi29b-abdallah-muneer-umars-projects.vercel.app",
+      "https://venato-eta.vercel.app" // The one you mentioned earlier!
+    ];
 
     interface corsConfiguration {
       origin: (
