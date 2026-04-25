@@ -2,12 +2,24 @@ import Agenda from 'agenda';
 import { Job } from 'agenda';
 import NodeMailerService from '../resources/mail/nodemailer.service';
 import logger from '../utils/logger';
-// Use the dedicated Queue URI
-const mongoUri = process.env.QUEUE_DB_URI || 'mongodb://localhost:27017/venato_queue';
+
+function getAgendaMongoUri(): string {
+  const { QUEUE_DB_URI, MONGO_PROD_URI, MONGO_URI, NODE_ENV } = process.env;
+  const fallbackMongoUri = NODE_ENV === 'production' ? MONGO_PROD_URI : MONGO_URI;
+  const mongoUri = QUEUE_DB_URI || fallbackMongoUri;
+
+  if (!mongoUri) {
+    throw new Error(
+      'Missing queue database connection string. Set QUEUE_DB_URI or the active MongoDB URI.',
+    );
+  }
+
+  return mongoUri;
+}
 
 export const agenda = new Agenda({
   db: { 
-    address: mongoUri, 
+    address: getAgendaMongoUri(), 
     collection: 'agendaJobs',
   },
   processEvery: '10 seconds',

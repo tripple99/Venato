@@ -1,4 +1,3 @@
-import dotenv from "dotenv";
 import "dotenv/config";
 import App from "./app";
 import validateEnv from "./utils/validate-env";
@@ -19,8 +18,6 @@ import AnalyticsController from "./resources/analytics/analytics.controller";
 import AuditLogController from "./resources/audit-logs/audit-log-controller";
 import "./resources/audit-logs/audit-queues/audit-queues";
 
-require("dotenv").config();
-
 process.on("uncaughtExceptions", (error) => {
   logger.error("Uncaught exception", { error });
   process.exit(1);
@@ -33,7 +30,8 @@ process.on("unhandledRejections", (reason) => {
 try {
   validateEnv();
 } catch (error) {
-  logger.error("Missing Environment Variables");
+  logger.error("Missing Environment Variables", { error });
+  process.exit(1);
 }
 
 async function startApp() {
@@ -65,6 +63,8 @@ async function startApp() {
     );
   } catch (error) {
     logger.error("failed to started Application", { error });
+    console.error("Application startup failed", error);
+    process.exit(1);
   }
 }
 

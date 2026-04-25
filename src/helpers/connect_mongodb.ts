@@ -9,14 +9,17 @@ async function connectDB(){
         socketTimeoutMS: 45000, // 45 seconds
       };
       const {MONGO_PROD_URI,NODE_ENV,MONGO_URI} = process.env
-      let connectedString:string;
+      let connectedString:string | undefined;
    try {
     
    if(!MONGO_URI && !MONGO_PROD_URI){
-      logger.error("URI isn't defined");
+      throw new Error("MongoDB URI isn't defined");
     }
 
     connectedString = (NODE_ENV === "production") ? MONGO_PROD_URI : MONGO_URI;
+    if (!connectedString) {
+      throw new Error("Active MongoDB connection string is missing for the current environment");
+    }
 
     
     mongoose.connection.on('connected',()=>{
@@ -36,6 +39,7 @@ async function connectDB(){
         code: error.code,
         stack: error.stack
     });
+    throw error;
    } 
  
 } 
