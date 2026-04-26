@@ -154,68 +154,61 @@ class App {
   private configureXssClean(): void {
     this.express.use(xssClean());
   }
-  private configureCors(): void {
-   const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
-  : [
-      "http://localhost:4000", // Fixed: added //
-      "http://127.0.0.1:4000", // Fixed: removed stray '
-      "http://localhost:5173", // Default Vite port
-      "https://venato-frontend.vercel.app",
-      "https://venato-frontend-flatoi29b-abdallah-muneer-umars-projects.vercel.app",
-      "https://venato-eta.vercel.app" // The one you mentioned earlier!
-    ];
+private configureCors(): void {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
+    : [
+        "http://localhost:4000",
+        "http://127.0.0.1:4000",
+        "http://localhost:5173",
+        "https://venato-frontend.vercel.app",
+        "https://venato-frontend-flatoi29b-abdallah-muneer-umars-projects.vercel.app",
+        "https://venato-eta.vercel.app"
+      ];
 
-    interface corsConfiguration {
-      origin: (
-        origin: string | undefined,
-        callback: (err: Error | null, allow?: boolean) => void,
-      ) => void;
-      method: string[];
-      allowedHeaders: string[];
-      credentials: boolean;
-    }
+  const corsOption = {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // 1. Allow requests with no origin (like mobile apps or curl)
+      if (!origin) {
+        return callback(null, true);
+      }
 
-    const corsOption: corsConfiguration = {
-      origin: (
-        origin: string | undefined,
-        callback: (err: Error | null, allow?: boolean) => void,
-      ) => {
-        // Allow requests with no origin (like mobile apps, curl, Postman)
-        // Allow all localhost and 127.0.0.1 requests
+      // 2. Check if the origin is in our explicit whitelist
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // 3. Fallback for localhost development using robust parsing
+      try {
         const originUrl = new URL(origin);
-        if (
-          !origin ||
-          allowedOrigins.includes(origin)
-      
-        ) {
-          callback(null, true);
-        } else {
-        try {
-          const originUrl = new URL(origin);
-          // Strictly check the hostname and protocol
-          if ((originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') && 
-              (originUrl.protocol === 'http:' || originUrl.protocol === 'https:')) {
-            callback(null, true);
-            return;
-          }
-        } catch(e) {}
-        callback(new Error("CORS not allowed for this origin"));
-  }
-      },
-      method: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: [
-        "Origin",
-        "X-Requested-With",
-        "Content-Type",
-        "Accept",
-        "Authorization",
-      ],
-      credentials: true,
-    };
+        const isLocalhost = originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1';
+        const isHttpOrHttps = originUrl.protocol === 'http:' || originUrl.protocol === 'https:';
 
-    this.express.use(cors(corsOption));
-  }
+        if (isLocalhost && isHttpOrHttps) {
+          return callback(null, true);
+        }
+      } catch (e) {
+        // Fall through to error if URL is invalid
+      }
+
+      callback(new Error("CORS not allowed for this origin"));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Fixed: plural
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+    ],
+    credentials: true,
+  };
+
+  this.express.use(cors(corsOption));
+}
   private setupMongooseErrorHandlers(): void {
     mongoose.connection.on("error", (err) => {
       logger.error(`MongoDB connection error: ${err.message}`);

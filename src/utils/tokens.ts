@@ -1,13 +1,13 @@
 import jwt from "jsonwebtoken"
 import HttpException from "../exceptions/http.exception"
 import { IAuth } from "../resources/auths/auth.interface"
-import {v4 as uuidv4} from "uuid"
+import crypto from "crypto";
 
 
 
 
 export const generateSessionId = ()=>{
-    return uuidv4();
+    return crypto.randomUUID();
 }
 
 
