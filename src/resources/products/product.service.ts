@@ -14,6 +14,7 @@ import PriceSnapshotService from "../price-snapshot/price.service";
 import { Types } from "mongoose";
 import watchListModel from "../watch-List/watch-list.model";
 import { Source } from "../price-snapshot/price.interface";
+import NotificationQueueService from "../notifications/notification.worker";
 class ProductService {
   private priceSnapShotService: PriceSnapshotService =
     new PriceSnapshotService();
@@ -277,6 +278,14 @@ class ProductService {
           source: Source.Updated,
           timestamp: new Date(),
         });
+
+        if (data.price !== undefined) {
+          await NotificationQueueService.queuePriceChangeNotification(
+            uid,
+            data.price,
+            updatedProduct?.name || "a watched product"
+          );
+        }
       }
 
       if (!updatedProduct)

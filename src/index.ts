@@ -18,6 +18,8 @@ import AlertController from "./resources/alert/alert.controller";
 import AnalyticsController from "./resources/analytics/analytics.controller";
 import AuditLogController from "./resources/audit-logs/audit-log-controller";
 import "./resources/audit-logs/audit-queues/audit-queues";
+import NotificationController from "./resources/notifications/notification.controller";
+import "./resources/notifications/notification.worker";
 
 process.on("uncaughtExceptions", (error) => {
   logger.error("Uncaught exception", { error });
@@ -55,6 +57,7 @@ async function startApp() {
         new AlertController(),
         new AnalyticsController(),
         new AuditLogController(),
+        new NotificationController(),
       ],
       port,
     );

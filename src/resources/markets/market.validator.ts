@@ -18,7 +18,7 @@ const locationSchema = z.object({
 
 
 const createMarket = z.object({
-   name:z.nativeEnum(Market),
+   name:z.string(),
    currency: z.string().regex(/^NGN$/,{
   message: "Currency must be NGN",
 }),
@@ -26,8 +26,11 @@ const createMarket = z.object({
  location:locationSchema,
 })
 const updateMarket = z.object({
-   marketName:z.nativeEnum(Market),
-   location:locationSchema,
+   marketName:z.string().optional(),
+   currency: z.string().regex(/^NGN$/,{
+  message: "Currency must be NGN",
+}).optional(),
+   location:locationSchema.optional(),
 }) 
 
 export default{

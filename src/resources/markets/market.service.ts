@@ -6,6 +6,7 @@ import { createPaginatedResult } from "../../utils/pagination";
 import { buildSortOptions } from "../../utils/pagination";
 import { paginationQuery } from "../../utils/pagination";
 import { PaginationResult } from "../../interface/pagination.interface";
+import NotificationQueueService from "../notifications/notification.worker";
 
  class MarketService{
    
@@ -14,7 +15,15 @@ import { PaginationResult } from "../../interface/pagination.interface";
       const market = await marketModel.findOne({name:data.name})
       if(market) throw new HttpException(404,"failed","Market already exist")
       const newMarket = new marketModel(data);
-      return await newMarket.save() 
+      const savedMarket = await newMarket.save();
+      
+      await NotificationQueueService.queueNewMarketNotification(
+        savedMarket.id,
+        savedMarket.name,
+        savedMarket.location?.state
+      );
+      
+      return savedMarket;
     } catch (error) {
       throw new HttpException(404,"failed",`Market creation failed `);
     }
@@ -35,6 +44,9 @@ import { PaginationResult } from "../../interface/pagination.interface";
     try {
       const market = await marketModel.findByIdAndUpdate(id,{isDeleted:true,isActive:false},{new:true});
       if(!market) throw new HttpException(404,"Not Found","Market doesn't exist ")
+      
+      await NotificationQueueService.queueMarketDeletedNotification(market.name);
+      
       return market;
     } catch (error) {
       throw new HttpException(404,"failed","Failed to delete market data ")

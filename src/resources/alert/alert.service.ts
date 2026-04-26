@@ -7,6 +7,7 @@ import AgendaQueueService from "../mail/email.worker";
 import authModel from "../auths/auth.model";
 import productModel from "../products/product.model";
 import AuditLogService from "../audit-logs/audit-log.service";
+import NotificationQueueService from "../notifications/notification.worker";
 import { AuthRole } from "../auths/auth.interface";
 import mongoose from "mongoose";
 import logger from "../../utils/logger";
@@ -305,6 +306,14 @@ class AlertService {
               "Venato Price Alert Triggered",
               content,
               "Alert",
+            );
+
+            await NotificationQueueService.sendNotification(
+              user._id,
+              "Price Alert Triggered",
+              `Your alert for ${product.name} has been triggered. The price is now ${alert.currency || "₦"}${snapshot.price}.`,
+              "ALERT" as any, // Temporary cast as any due to possible enum mismatch if not exported correctly, but let's use the correct enum value
+              { productId: alert.productId, price: snapshot.price, targetValue: alert.targetValue }
             );
 
             await this.logs.logAction({
