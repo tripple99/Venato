@@ -72,13 +72,15 @@ export function createPaginatedResult<T>(
   data: T[],
   totalCount: number,
   page: number,
-  limit: number
+  limit: number,
+  stats?: Record<string, number>
 ): PaginationResult<T> {
   const metadata = calculatePaginationMetadata(totalCount, page, limit);
 
   return {
     data,
     ...metadata,
+    ...(stats && { stats }),
   };
 }
 

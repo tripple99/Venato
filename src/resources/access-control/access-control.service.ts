@@ -237,7 +237,7 @@ class AccessControlService {
         pagination.sortBy,
         pagination.sortOrder,
       );
-      const [users, totalCount] = await Promise.all([
+      const [users, totalCount, activeUsers, verifiedUsers, adminUsers] = await Promise.all([
         authModel
           .find({})
           .sort(sortOptions)
@@ -249,12 +249,21 @@ class AccessControlService {
           }).select("-password -sessionToken -refreshToken")
           ,
         authModel.countDocuments({}).lean(),
+        authModel.countDocuments({isActive: true}).lean(),
+        authModel.countDocuments({isVerified: true}).lean(),
+        authModel.countDocuments({userRole: AuthRole.Admin}).lean(),
       ]);
+      const stats = {
+        activeUsers,
+        verifiedUsers,
+        adminUsers,
+      };
       return createPaginatedResult(
         users,
         totalCount,
         pagination.page,
         pagination.limit,
+        stats
       );
     } catch (error) {
       throw new HttpException(
