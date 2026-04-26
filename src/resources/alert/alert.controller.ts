@@ -80,8 +80,8 @@ class AlertController implements GlobalController {
   getAlertById = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const alert = await this.alertService.getAlertById(
-        req.params.id,
-        req.user.id,
+        req.params.id as string,
+        req.user.id as string,
       );
       res.status(200).json({
         status: "success",
@@ -98,8 +98,8 @@ class AlertController implements GlobalController {
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
       const alert = await this.alertService.updateAlert(
-        req.params.id,
-        req.user.id,
+        req.params.id as string,
+        req.user.id as string,
         req.user.userRole,
         req.body,
         ipAddress,
@@ -120,8 +120,8 @@ class AlertController implements GlobalController {
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
       const alert = await this.alertService.deleteAlert(
-        req.params.id,
-        req.user.id,
+        req.params.id as string,
+        req.user.id as string,
         req.user.userRole,
         ipAddress,
         userAgent,
@@ -143,7 +143,7 @@ class AlertController implements GlobalController {
   ) => {
     try {
       const suggestions = await this.alertService.suggestThresholds(
-        req.params.productId,
+        req.params.productId as string,
       );
       if (!suggestions)
         throw new HttpException(

@@ -81,7 +81,7 @@ class InventoryController implements GlobalController {
     try {
       const inventory = await this.inventoryService.update(
         req.user.id,
-        req.params.id,
+        req.params.id as string,
         req.body,
       );
       res.status(200).json({
@@ -102,7 +102,7 @@ class InventoryController implements GlobalController {
     try {
       const inventory = await this.inventoryService.delete(
         req.user.id,
-        req.params.id,
+        req.params.id as string,
       );
       res.status(200).json({
         status: "Success",
@@ -140,7 +140,7 @@ class InventoryController implements GlobalController {
     try {
       const inventory = await this.inventoryService.fetchById(
         req.user.id,
-        req.params.id,
+        req.params.id as string,
       );
       res.status(200).json({
         status: "Success",

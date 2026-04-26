@@ -36,7 +36,7 @@ export default class AuditLogService {
                         path: "actorId",
                         select: "name email",
                     })
-                    .lean(),
+                    ,
                 auditLogModel.countDocuments({}).lean(),
             ]);
             return createPaginatedResult(auditLogs, totalCount, pagination.page, pagination.limit);

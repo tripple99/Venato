@@ -42,7 +42,7 @@ class MarketController implements GlobalController{
    private updateMarket = async (req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
     
-      const market = await this.marketService.update(req.params.id,req.body)
+      const market = await this.marketService.update(req.params.id as string,req.body)
       res.status(201).json({
         status:"Success",
         message:"Market updated successfully",
@@ -55,7 +55,7 @@ class MarketController implements GlobalController{
  private deleteMarket = async (req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
     
-      const market = await this.marketService.delete(req.params.id)
+      const market = await this.marketService.delete(req.params.id as string)
       res.status(201).json({
         status:"Success",
         message:"Market deleted successfully",
@@ -93,7 +93,7 @@ class MarketController implements GlobalController{
  }
  private fetchById = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
    try {
-     const market = await this.marketService.fetchById(req.params.id)
+     const market = await this.marketService.fetchById(req.params.id as string)
        res.status(200).json({
       status:"Success",
       mmessage:"Market data fetched successfully",

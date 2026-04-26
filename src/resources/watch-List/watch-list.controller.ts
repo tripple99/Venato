@@ -22,7 +22,7 @@ class WatchListControllers implements GlobalControllers{
 
   private create = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-       const list = await this.watchList.createList(req.user,req.params.id) 
+       const list = await this.watchList.createList(req.user,req.params.id as string) 
        res.status(201).json({
         status:"Success",
         message:"Product added to watch list successfully",
@@ -49,7 +49,7 @@ class WatchListControllers implements GlobalControllers{
   }
   private delete = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-      const result = await this.watchList.deleteListById(req.params.id,req.user?.id)
+      const result = await this.watchList.deleteListById(req.params.id as string ,req.user?.id)
       res.status(200).json({
         status:"Success",
         message:"Product deleted successfully",

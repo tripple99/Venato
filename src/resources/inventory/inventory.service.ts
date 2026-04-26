@@ -168,7 +168,7 @@ class InventoryService {
           .sort(sortOptions)
           .skip(pagination.skip)
           .limit(pagination.limit)
-          .lean(),
+          ,
         inventoryModel.countDocuments({ userId }).lean(),
       ]);
       return createPaginatedResult(
@@ -192,7 +192,7 @@ class InventoryService {
           _id: inventoryId,
           userId: userId,
         })
-        .lean();
+        
       if (!inventory)
         throw new HttpException(
           404,

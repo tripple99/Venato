@@ -2,7 +2,7 @@ import bodyParser from 'body-parser';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import express, { Application } from 'express';
-import expressMongoSanitize from 'express-mongo-sanitize';
+import expressMongoSanitize, { sanitize } from 'express-mongo-sanitize';
 import mongoSanitize from 'express-mongo-sanitize';
 import session from 'express-session';
 import helmet from 'helmet'; 
@@ -17,6 +17,12 @@ export function setupMiddlewares(app: Application): void {
   // app.use(bodyParser())
   app.use(express.urlencoded({ extended: false}));
   app.use(helmet());
+  app.use((req, res, next) => {
+    if (req.body) sanitize(req.body, { replaceWith: '_' });
+    if (req.query) sanitize(req.query, { replaceWith: '_' });
+    if (req.params) sanitize(req.params, { replaceWith: '_' });
+    next();
+  });
   app.use(mongoSanitize({
     replaceWith: "_",
     allowDots: true

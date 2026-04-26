@@ -120,7 +120,7 @@ class ProductController implements GlobalController {
     try {
       const { price } = req.params;
       const result = await this.Productservice.fetchProductByPrice(
-        price,
+         price as string,
         req.query,
       );
       res.status(200).json({
@@ -140,7 +140,7 @@ class ProductController implements GlobalController {
     try {
       const { market } = req.params;
       const result = await this.Productservice.fetchProductsByMarket(
-        market,
+        market as string,
         req.query,
       );
       res.status(200).json({
@@ -178,7 +178,7 @@ class ProductController implements GlobalController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const product = await this.Productservice.fetchProductById(req.params.id);
+      const product = await this.Productservice.fetchProductById(req.params.id as string);
 
       res.status(200).json({
         status: "Success",
@@ -209,7 +209,7 @@ class ProductController implements GlobalController {
         updatedBy: req.user?.id,
       };
 
-      const result = await this.Productservice.update(req.params.id, data);
+      const result = await this.Productservice.update(req.params.id as string, data);
       res.status(200).json({
         status: "Success",
         message: "Product updated successfully",
@@ -226,7 +226,7 @@ class ProductController implements GlobalController {
   ): Promise<void> => {
     try {
       //  const market = req.markets
-      const data = await this.Productservice.delete(req.params.id);
+      const data = await this.Productservice.delete(req.params.id as string);
       res.status(200).json({
         status: "Success",
         message: "Product deleted successfully",

@@ -58,7 +58,7 @@ class ProfileController implements GlobalController{
    }
    private delete = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-      const uid = req.params.id;
+      const uid = req.params.id as string;
       const adminId = (req as any).user?.id;
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");

@@ -247,7 +247,7 @@ class AccessControlService {
             path: "allowedMarkets",
             select: "name location",
           })
-          .lean(),
+          ,
         authModel.countDocuments({}).lean(),
       ]);
       return createPaginatedResult(

@@ -72,7 +72,7 @@ class AccessController implements GlobalControllers {
       const adminId = (req as any).user?.id;
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
-      const grant = await this.accessService.grantRole(req.params.id, userRole, adminId, ipAddress, userAgent);
+      const grant = await this.accessService.grantRole(req.params.id as string, userRole, adminId, ipAddress, userAgent);
       res.status(200).json({
         status: "Successful",
         message: "User role successfully granted",
@@ -93,7 +93,7 @@ class AccessController implements GlobalControllers {
       const adminId = (req as any).user?.id;
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
-      const verify = await this.accessService.verifyUser(id, adminId, ipAddress, userAgent);
+      const verify = await this.accessService.verifyUser(id as string, adminId, ipAddress, userAgent);
       res.status(200).json({
         status: "Successful",
         message: "User verified successfully",
@@ -114,8 +114,8 @@ class AccessController implements GlobalControllers {
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
       const grant = await this.accessService.grantMarketAccess(
-        id,
-        marketId,
+        id as string,
+        marketId as string,
         adminId,
         ipAddress,
         userAgent
@@ -140,7 +140,7 @@ class AccessController implements GlobalControllers {
       const adminId = (req as any).user?.id;
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
-      const revoke = await this.accessService.revokeAccess(id, adminId, ipAddress, userAgent);
+      const revoke = await this.accessService.revokeAccess(id as string, adminId, ipAddress, userAgent);
       res.status(200).json({
         status: "Success",
         message: "User Access revoke successfully",

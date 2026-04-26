@@ -31,7 +31,7 @@ class AnalyticsController implements GlobalController {
     try {
       const period = Number(req.query.period) || 30;
       const trend = await this.analyticsService.getTrend(
-        req.params.productId,
+        req.params.productId as string,
         period,
       );
       res.status(200).json({ status: "Success", payload: trend });
@@ -97,7 +97,7 @@ class AnalyticsController implements GlobalController {
     try {
       const period = Number(req.query.period) || 30;
       const volatility = await this.analyticsService.getVolatility(
-        req.params.productId,
+        req.params.productId as string,
         period,
       );
       res
