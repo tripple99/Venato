@@ -5,10 +5,13 @@ import { IAuth, AuthRole } from "../auths/auth.interface";
 import AuditLogService from "../audit-logs/audit-log.service";
 import AgendaQueueService from "../mail/email.worker";
 import Mailtemplates from "../mail/mail.templates";
+import ProfileService from "../profile/profile.service";
+import { Types } from "mongoose";
 
 class AdminService {
   private logs = new AuditLogService();
   private agenda = new AgendaQueueService();
+  private profile = new ProfileService();
 
   public async inviteUser(
     adminId: string,
@@ -40,6 +43,15 @@ class AdminService {
       });
 
       await newUser.save();
+      
+      // 3.5 Create user profile
+      const userName = email.split("@")[0];
+      await this.profile.createProfile({
+        fullname: fullname,
+        username: userName,
+        uid: new Types.ObjectId(newUser.id),
+        roles: role,
+      });
 
       // 4. Generate Invite Link to Forgot Password Page and Send Email
       // Ideally, the base URL should come from env variables
@@ -94,6 +106,49 @@ class AdminService {
       });
       if (error instanceof HttpException) throw error;
       throw new HttpException(400, "Failed", "Failed to invite user");
+    }
+  }
+
+  public async deleteUser(
+    adminId: string,
+    userId: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    try {
+      // 1. Delete from Auth collection
+      const user = await authModel.findByIdAndDelete(userId);
+      if (!user) {
+        throw new HttpException(404, "Not found", "User not found");
+      }
+
+      // 2. Delete from Profile collection
+      await this.profile.deleteProfile(userId, adminId, ipAddress, userAgent);
+
+      // 3. Audit Logging
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "USER_DELETED",
+        entityType: user.userRole,
+        entityId: new Types.ObjectId(userId),
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        metadata: { deletedEmail: user.email, deletedRole: user.userRole }
+      });
+    } catch (error: any) {
+      await this.logs.logAction({
+        actorId: adminId,
+        actorType: AuthRole.superAdmin,
+        action: "USER_DELETED",
+        status: "FAILED",
+        ipAddress,
+        userAgent,
+        metadata: { targetUserId: userId, error: error.message }
+      });
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(400, "Failed", "Failed to delete user");
     }
   }
 }

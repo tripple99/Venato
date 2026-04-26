@@ -175,8 +175,15 @@ class AuthService {
       const avatar = profile.photos?.[0]?.value;
       const user = await authModel.findOne({ email });
       if (!user) {
-        const newUser = new authModel({ email, fullName, avatar });
+        const newUser = new authModel({ email, fullname: fullName, avatar });
         await newUser.save();
+        await this.Profile.createProfile({
+          fullname: fullName,
+          username: email.split("@")[0],
+          uid: new Types.ObjectId(newUser.id),
+          roles: newUser.userRole,
+          image: avatar
+        });
         await this.logs.logAction({
           actorId: newUser._id,
           actorType: newUser.userRole,

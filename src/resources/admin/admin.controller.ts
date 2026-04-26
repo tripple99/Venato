@@ -39,6 +39,11 @@ class AdminController implements GlobalController {
       [authenticate, authorize([AuthRole.superAdmin, AuthRole.Admin])],
       this.verifyUser
     );
+    this.router.delete(
+      "/users/:id",
+      [authenticate, authorize([AuthRole.superAdmin])],
+      this.deleteUser
+    );
   }
 
   private inviteUser = async (
@@ -86,6 +91,28 @@ class AdminController implements GlobalController {
         status: "Successful",
         message: "User verified successfully",
         payload: verify,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private deleteUser = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const adminId = (req as any).user?.id;
+      const ipAddress = req.ip;
+      const userAgent = req.get("User-Agent");
+
+      await this.adminService.deleteUser(adminId, id, ipAddress, userAgent);
+
+      res.status(200).json({
+        status: "Success",
+        message: "User successfully deleted",
       });
     } catch (error) {
       next(error);

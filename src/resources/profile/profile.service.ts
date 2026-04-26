@@ -68,7 +68,7 @@ class ProfileService {
 
   public async deleteProfile(uid:string, actorId?: string, ipAddress?: string, userAgent?: string): Promise<IProfile> {
     try {
-       const userProfile = await profileModel.findByIdAndDelete({uid}).exec()
+       const userProfile = await profileModel.findOneAndDelete({uid}).exec()
        if(!userProfile) throw new HttpException(404,"Not found",`User doesn't exist`)
        
        await this.logs.logAction({
