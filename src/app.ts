@@ -183,16 +183,25 @@ class App {
       ) => {
         // Allow requests with no origin (like mobile apps, curl, Postman)
         // Allow all localhost and 127.0.0.1 requests
+        const originUrl = new URL(origin);
         if (
           !origin ||
-          allowedOrigins.includes(origin) ||
-          origin?.startsWith("http://localhost:") ||
-          origin?.startsWith("http://127.0.0.1:")
+          allowedOrigins.includes(origin)
+      
         ) {
           callback(null, true);
         } else {
-          callback(new Error("CORS not allowed for this origin"));
-        }
+        try {
+          const originUrl = new URL(origin);
+          // Strictly check the hostname and protocol
+          if ((originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') && 
+              (originUrl.protocol === 'http:' || originUrl.protocol === 'https:')) {
+            callback(null, true);
+            return;
+          }
+        } catch(e) {}
+        callback(new Error("CORS not allowed for this origin"));
+  }
       },
       method: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: [

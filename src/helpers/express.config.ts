@@ -3,7 +3,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import express, { Application } from 'express';
 import expressMongoSanitize from 'express-mongo-sanitize';
-
+import mongoSanitize from 'express-mongo-sanitize';
 import session from 'express-session';
 import helmet from 'helmet'; 
 import passport from 'passport';
@@ -17,7 +17,9 @@ export function setupMiddlewares(app: Application): void {
   // app.use(bodyParser())
   app.use(express.urlencoded({ extended: false}));
   app.use(helmet());
-
+  app.use(mongoSanitize({
+    replaceWith: "_"
+  }));
  // Add session middleware before passport
   app.use(session(sessionConfig));
  // Passport session

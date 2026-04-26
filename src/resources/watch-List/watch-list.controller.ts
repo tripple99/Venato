@@ -49,7 +49,7 @@ class WatchListControllers implements GlobalControllers{
   }
   private delete = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
     try {
-      const result = await this.watchList.deleteListById(req.params.id)
+      const result = await this.watchList.deleteListById(req.params.id,req.user?.id)
       res.status(200).json({
         status:"Success",
         message:"Product deleted successfully",

@@ -30,7 +30,8 @@ export const createUploader = (options: {
 
         return {
           folder: uploadFolder,
-          resource_type: "auto",
+          resource_type: "image",
+          format: "jpg", 
           allowed_formats: options.allowedFormats.map(fmt => fmt.split('/')[1] || fmt),
         };
       } catch (error) {

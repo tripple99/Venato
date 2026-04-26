@@ -48,9 +48,9 @@ class WatchListService {
       );
     }
   }
-  public async deleteListById(uid: string): Promise<void> {
+  public async deleteListById(uid: string,userId:string): Promise<void> {
     try {
-      const list = await watchListModel.findByIdAndDelete({ uid });
+      const list = await watchListModel.findByIdAndDelete({ _id: uid,user:userId });
       if (!list)
         throw new HttpException(
           404,

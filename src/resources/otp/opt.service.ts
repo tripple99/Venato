@@ -23,15 +23,14 @@ class OtpService{
     return optDocument.otp;
   }
 
-  public async veriryOtp(uid:string,otp:string,):Promise<boolean>{
-    const otpVerify = await otpModel.findOne({uid,otp})
-    if(!otpVerify) return false;
-    if(otpVerify.isVerified) return false
-    if(otpVerify.expiresAt <  new Date()) return false
-
-    otpVerify.isVerified = true
-    await otpVerify.save();
-    return otpVerify.isVerified;
+  public async veriryOtp(uid: string, otp: string): Promise<boolean> {
+    const otpVerify = await otpModel.findOneAndUpdate(
+      { uid, otp, isVerified: false, expiresAt: { $gt: new Date() } },
+      { $set: { isVerified: true } },
+      { new: true }
+    );
+    
+    return !!otpVerify;
   }
 }
 export default OtpService;

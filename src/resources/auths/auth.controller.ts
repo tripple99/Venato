@@ -6,8 +6,13 @@ import { authenticate, authorize, TokenPayload } from "../../Middleware/auths";
 import schemaValidator from "../../Middleware/schema-validation.middlware";
 import validator from "./auth.validation";
 import authModel from "./auth.model";
+import rateLimit from "express-rate-limit";
 
-
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10, // Limit each IP to 10 requests per windowMs for sensitive routes
+    message: "Too many authentication attempts, please try again later"
+  });
 class AuthControllers implements GlobalController{
      public path = 'auth';
      public router = Router()
@@ -17,14 +22,14 @@ class AuthControllers implements GlobalController{
       this.initializeRoutes();
      }
      private initializeRoutes():void{
-        this.router.post('/',schemaValidator(validator.register),this.register),
-        this.router.post('/login',schemaValidator(validator.login),this.login),
+        this.router.post('/',schemaValidator(validator.register),authLimiter,this.register),
+        this.router.post('/login',schemaValidator(validator.login),authLimiter,this.login),
         this.router.post('/refresh',schemaValidator(validator.refreshToken),this.refreshToken),
         this.router.post('/logout',authenticate,this.logout),
         this.router.post("/forgot-password",schemaValidator(validator.forgotPassword),this.forgotPassword)
         this.router.post("/validate-Otp",schemaValidator(validator.validateOtp),this.validateOtp)
         this.router.patch("/reset-password",schemaValidator(validator.updatePassword),this.resetPassword)
-        this.router.post("/resend-otp",schemaValidator(validator.resendOtp),this.resendOtp)
+        this.router.post("/resend-otp",schemaValidator(validator.resendOtp),authLimiter,this.resendOtp)
      }
 
      private register = async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
