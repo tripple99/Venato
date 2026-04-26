@@ -108,7 +108,7 @@ class AdminController implements GlobalController {
       const ipAddress = req.ip;
       const userAgent = req.get("User-Agent");
 
-      await this.adminService.deleteUser(adminId, id, ipAddress, userAgent);
+      await this.adminService.deleteUser(adminId, id as string, ipAddress, userAgent);
 
       res.status(200).json({
         status: "Success",
