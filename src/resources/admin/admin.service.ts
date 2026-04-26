@@ -17,7 +17,7 @@ class AdminService {
     role: AuthRole,
     ipAddress?: string,
     userAgent?: string
-  ): Promise<{ message: string; user: Partial<IAuth> }> {
+  ): Promise<Partial<IAuth>> {
     try {
       // 1. Check if user already exists
       const existingUser = await authModel.findOne({ email });
@@ -72,13 +72,10 @@ class AdminService {
       });
 
       return {
-        message: "User successfully invited. An email has been sent.",
-        user: {
           id: newUser.id,
           email: newUser.email,
           fullname: newUser.fullname,
           userRole: newUser.userRole,
-        }
       };
     } catch (error: any) {
       await this.logs.logAction({

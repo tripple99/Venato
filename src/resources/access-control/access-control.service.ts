@@ -246,7 +246,7 @@ class AccessControlService {
           .populate({
             path: "allowedMarkets",
             select: "name location",
-          })
+          }).select("-password -sessionToken -refreshToken")
           ,
         authModel.countDocuments({}).lean(),
       ]);
@@ -260,7 +260,7 @@ class AccessControlService {
       throw new HttpException(
         400,
         "failed",
-        `Failed to get all users ${error}`,
+        `Failed to get all users `,
       );
     }
   }

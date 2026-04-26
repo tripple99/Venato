@@ -55,8 +55,8 @@ class AdminController implements GlobalController {
 
       res.status(201).json({
         status: "Success",
-        message: result.message,
-        payload: result.user,
+        message: "User successfully invited. An email has been sent.",
+        payload: result,
       });
     } catch (error) {
       next(error);
