@@ -1,5 +1,5 @@
   import {v2 as cloudinary} from 'cloudinary';
-  import { CloudinaryStorage } from 'multer-storage-cloudinary';
+  const { CloudinaryStorage } = require('multer-storage-cloudinary');
   import dotenv from 'dotenv';
   import multer from 'multer';
   import { Request } from 'express';
