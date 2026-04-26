@@ -28,7 +28,7 @@ class AuthControllers implements GlobalController{
         this.router.post('/logout',authenticate,this.logout),
         this.router.post("/forgot-password",schemaValidator(validator.forgotPassword),this.forgotPassword)
         this.router.post("/validate-Otp",schemaValidator(validator.validateOtp),this.validateOtp)
-        this.router.patch("/reset-password",schemaValidator(validator.updatePassword),this.resetPassword)
+        this.router.patch("/reset-password",schemaValidator(validator.updatePassword),authLimiter,this.resetPassword)
         this.router.post("/resend-otp",schemaValidator(validator.resendOtp),authLimiter,this.resendOtp)
      }
 

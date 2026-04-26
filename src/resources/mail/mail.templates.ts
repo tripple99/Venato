@@ -178,7 +178,48 @@ const Mailtemplates = {
     </div>
   </body>
   </html>
-  `
-};
+  `,
+  // NEW: User Invite Template
+ userInviteTemplate: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; }
+    .container { max-width: 500px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .header { background-color: #2E7D32; padding: 40px 20px; text-align: center; color: white; }
+    .content { padding: 40px; text-align: center; }
+    .cta-button { display: inline-block; padding: 14px 30px; background-color: #2E7D32; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 20px; }
+    .footer { padding: 20px; text-align: center; font-size: 12px; color: #757575; background: #fafafa; }
+    h1 { margin: 0; font-size: 24px; }
+    p { color: #546e7a; line-height: 1.6; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Venato</h1>
+    </div>
+    <div class="content">
+      <h2 style="color: #263238; margin-bottom: 8px;">You've Been Invited!</h2>
+      <p>You have been invited to join the Venato platform. Please click the button below to set up your password and activate your account.</p>
+      <div style="margin-top: 30px;">
+        <a href="{{INVITE_LINK}}" class="cta-button">Set Password</a>
+      </div>
+      <p style="font-size: 13px; margin-top: 30px;">This link will expire in 30 minutes.</p>
+    </div>
+    <div class="footer">
+      <p>© 2026 Venato. Empowering Agricultural Trade.</p>
+    </div>
+  </div>
+</body>
+</html>
+`
+  }
+
+  
 
 export default Mailtemplates;

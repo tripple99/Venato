@@ -9,6 +9,7 @@ import AuthControllers from "./resources/auths/auth.controller";
 import MarketController from "./resources/markets/market.controllers";
 import ProductController from "./resources/products/product.controller";
 import AccessController from "./resources/access-control/access-control.controller";
+import AdminController from "./resources/admin/admin.controller";
 import StatsController from "./resources/stats/stats.controller";
 import ProfileController from "./resources/profile/profile.controller";
 import WatchListControllers from "./resources/watch-List/watch-list.controller";
@@ -46,6 +47,7 @@ async function startApp() {
         new MarketController(),
         new ProductController(),
         new AccessController(),
+        new AdminController(),
         new StatsController(),
         new ProfileController(),
         new WatchListControllers(),

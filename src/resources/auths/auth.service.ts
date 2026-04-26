@@ -11,6 +11,7 @@ import { Types } from "mongoose";
 import { JwtPayload } from "jsonwebtoken";
 import { OtpPurpose } from "../otp/opt.protocol";
 import otpModel from "../otp/otp.model";
+import crypto from "crypto";
 import AgendaQueueService from "../mail/email.worker";
 import AuditLogService from "../audit-logs/audit-log.service";
 import logger from "../../utils/logger";

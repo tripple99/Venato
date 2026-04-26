@@ -17,16 +17,16 @@ export function setupMiddlewares(app: Application): void {
   // app.use(bodyParser())
   app.use(express.urlencoded({ extended: false}));
   app.use(helmet());
+  // Custom middleware to safely sanitize in-place without reassigning req properties
+  // This prevents the "Cannot set property query" TypeError in Express 5
   app.use((req, res, next) => {
-    if (req.body) sanitize(req.body, { replaceWith: '_' });
-    if (req.query) sanitize(req.query, { replaceWith: '_' });
-    if (req.params) sanitize(req.params, { replaceWith: '_' });
+    const sanitizeOptions = { replaceWith: "_", allowDots: true };
+    if (req.body) sanitize(req.body, sanitizeOptions);
+    if (req.query) sanitize(req.query, sanitizeOptions);
+    if (req.params) sanitize(req.params, sanitizeOptions);
+    if (req.headers) sanitize(req.headers, sanitizeOptions);
     next();
   });
-  app.use(mongoSanitize({
-    replaceWith: "_",
-    allowDots: true
-  }));
  // Add session middleware before passport
   app.use(session(sessionConfig));
  // Passport session
