@@ -36,7 +36,7 @@ class AdminService {
         password: dummyPassword,
         userRole: role,
         isActive: false,
-        isVerified: false,
+        isVerified: true,
       });
 
       await newUser.save();

@@ -5,6 +5,7 @@ import { AuthRole } from "../auths/auth.interface";
 import schemaValidator from "../../Middleware/schema-validation.middlware";
 import adminValidator from "./admin.validator";
 import AdminService from "./admin.service";
+import AccessControlService from "../access-control/access-control.service";
 import rateLimit from "express-rate-limit";
 
 // Rate limit to prevent spamming invites
@@ -18,6 +19,7 @@ class AdminController implements GlobalController {
   public path = "admin";
   public router = Router();
   private adminService = new AdminService();
+  private accessService = new AccessControlService();
 
   constructor() {
     this.initializeRoutes();
@@ -30,6 +32,12 @@ class AdminController implements GlobalController {
       inviteLimiter,
       schemaValidator(adminValidator.createUser),
       this.inviteUser
+    );
+
+    this.router.patch(
+      "/verify/:id",
+      [authenticate, authorize([AuthRole.superAdmin, AuthRole.Admin])],
+      this.verifyUser
     );
   }
 
@@ -57,6 +65,27 @@ class AdminController implements GlobalController {
         status: "Success",
         message: "User successfully invited. An email has been sent.",
         payload: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private verifyUser = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const adminId = (req as any).user?.id;
+      const ipAddress = req.ip;
+      const userAgent = req.get("User-Agent");
+      const verify = await this.accessService.verifyUser(id as string, adminId, ipAddress, userAgent);
+      res.status(200).json({
+        status: "Successful",
+        message: "User verified successfully",
+        payload: verify,
       });
     } catch (error) {
       next(error);
