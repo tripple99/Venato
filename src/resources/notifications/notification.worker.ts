@@ -173,6 +173,36 @@ class NotificationQueueService {
       logger.error("Failed to queue market deleted notification", { error });
     }
   }
+
+  public async queueRoleChangedNotification(recipientId: string | mongoose.Types.ObjectId, role: string) {
+    try {
+      await this.agenda.now("process-notification", {
+        recipientId,
+        title: "Role Updated",
+        message: `Your account role has been updated to: ${role}`,
+        type: NotificationType.ACCESS,
+        metadata: { role }
+      });
+    } catch (error) {
+      logger.error("Failed to queue role change notification", { error });
+    }
+  }
+
+  public async queueMarketAccessNotification(recipientId: string | mongoose.Types.ObjectId, marketName: string, action: 'granted' | 'revoked') {
+    try {
+      await this.agenda.now("process-notification", {
+        recipientId,
+        title: action === 'granted' ? "Market Access Granted" : "Market Access Revoked",
+        message: action === 'granted' 
+          ? `You have been granted access to the ${marketName} market.`
+          : `Your access to the ${marketName} market has been revoked.`,
+        type: NotificationType.ACCESS,
+        metadata: { marketName, action }
+      });
+    } catch (error) {
+      logger.error("Failed to queue market access notification", { error });
+    }
+  }
 }
 
 export default new NotificationQueueService();

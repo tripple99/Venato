@@ -5,7 +5,8 @@ export enum NotificationType {
   ALERT = "ALERT",
   PROMO = "PROMO",
   MARKET = "MARKET",
-  PRICE_CHANGE = "PRICE_CHANGE"
+  PRICE_CHANGE = "PRICE_CHANGE",
+  ACCESS = "ACCESS"
 }
 
 export enum NotificationStatus {

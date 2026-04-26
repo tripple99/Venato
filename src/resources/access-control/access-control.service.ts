@@ -15,6 +15,8 @@ import {
   createPaginatedResult,
   paginationQuery,
 } from "../../utils/pagination";
+import NotificationQueueService from "../notifications/notification.worker";
+import { NotificationType } from "../notifications/notification.interface";
 
 class AccessControlService {
   private logs = new AuditLogService();
@@ -65,6 +67,14 @@ class AccessControlService {
         userAgent,
         metadata: { targetUserId: uid, marketId }
       });
+
+      const market = await marketModel.findById(marketId);
+
+      await NotificationQueueService.queueMarketAccessNotification(
+        uid,
+        market?.name || "new",
+        "granted",
+      );
 
       return user;
     } catch (error: any) {
@@ -124,6 +134,8 @@ class AccessControlService {
         userAgent,
         metadata: { targetUserId: uid, role }
       });
+
+      await NotificationQueueService.queueRoleChangedNotification(uid, role);
 
       return user as any;
     } catch (error: any) {
@@ -213,6 +225,8 @@ class AccessControlService {
         userAgent,
         metadata: { targetUserId: uid }
       });
+
+      await NotificationQueueService.queueRoleChangedNotification(uid, "Revoked/None");
 
       return savedUser;
     } catch (error: any) {
