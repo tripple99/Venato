@@ -18,7 +18,8 @@ export function setupMiddlewares(app: Application): void {
   app.use(express.urlencoded({ extended: false}));
   app.use(helmet());
   app.use(mongoSanitize({
-    replaceWith: "_"
+    replaceWith: "_",
+    allowDots: true
   }));
  // Add session middleware before passport
   app.use(session(sessionConfig));
