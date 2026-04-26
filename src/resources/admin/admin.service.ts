@@ -76,6 +76,11 @@ class AdminService {
           email: newUser.email,
           fullname: newUser.fullname,
           userRole: newUser.userRole,
+          isActive: newUser.isActive,
+          isVerified: newUser.isVerified,
+          lastActive: newUser.lastActive,
+          createdAt: newUser.createdAt,
+          updatedAt: newUser.updatedAt,
       };
     } catch (error: any) {
       await this.logs.logAction({
