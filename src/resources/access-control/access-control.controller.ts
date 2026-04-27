@@ -17,15 +17,20 @@ class AccessController implements GlobalControllers {
 
   private initializeController(): void {
     this.router.patch(
+      "/revoke/:id",
+      [authenticate, authorize([AuthRole.superAdmin])],
+      this.revokeUserAccess,
+    );
+    this.router.patch(
+      "/verify/:id",
+      [authenticate, authorize([AuthRole.superAdmin])],
+      this.verifyUser,
+    );
+    this.router.patch(
       "/:id/:marketId",
       [authenticate, authorize([AuthRole.superAdmin])],
      
       this.grantMarketAccess,
-    );
-    this.router.patch(
-      "/revoke/:id/:marketId",
-      [authenticate, authorize([AuthRole.superAdmin])],
-      this.revokeUserAccess,
     );
     this.router.post(
       "/:id",
@@ -37,11 +42,6 @@ class AccessController implements GlobalControllers {
       "/",
       [authenticate, authorize([AuthRole.superAdmin])],
       this.getAllUsers,
-    );
-    this.router.patch(
-      "/verify/:id",
-      [authenticate, authorize([AuthRole.superAdmin])],
-      this.verifyUser,
     );
 
   }
