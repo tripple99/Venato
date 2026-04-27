@@ -30,7 +30,7 @@ class ProductController implements GlobalController {
     );
     this.router.get(
       "/:id",
-      
+      [authenticateOptional],
       this.fetchProductById,
     );
     this.router.post(
