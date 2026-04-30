@@ -3,8 +3,11 @@ import { agenda } from "../../helpers/agenda";
 import { Job } from "agenda";
 import HttpException from "../../exceptions/http.exception";
 import logger from "../../utils/logger";
+import AuditLogService from "../audit-logs/audit-log.service";
+import { AuthRole } from "../auths/auth.interface";
 
 const nodeMailerService = new NodeMailerService();
+const auditLogService = new AuditLogService();
 
 // Define the sendMail job handler
 agenda.define("sendMail", async (job: Job) => {
@@ -13,6 +16,17 @@ agenda.define("sendMail", async (job: Job) => {
     await nodeMailerService.send(email, subject, content, mailCategory);
     await job.remove();
   } catch (error: any) {
+    await auditLogService.logAction({
+      action: "EMAIL_FAILED",
+      status: "FAILED",
+      actorId: "system",
+      actorType:AuthRole.User,
+      entityType: "EMAIL",
+      entityId: job.attrs.data.email,
+      metadata: { email: job.attrs.data.email, error: error.message },
+      ipAddress: "system",
+      userAgent: "system",
+    });
     logger.error(`[QUEUE ERROR] Job <${job.attrs.name}> failed: ${error.message}`, { error });
   }
 });
@@ -38,6 +52,17 @@ class AgendaQueueService {
         mailCategory,
       });
     } catch (error) {
+       await auditLogService.logAction({
+      action: "EMAIL_FAILED",
+      status: "FAILED",
+      actorId: "system",
+      actorType:AuthRole.User,
+      entityType: "EMAIL",
+      entityId: email,
+      metadata: { email: email, error: error.message },
+      ipAddress: "system",
+      userAgent: "system",
+    });
       throw new HttpException(500, "Queue Failed", "Queue Error");
     }
   }
@@ -59,6 +84,17 @@ class AgendaQueueService {
         mailCategory,
       });
     } catch (error) {
+       await auditLogService.logAction({
+      action: "EMAIL_FAILED",
+      status: "FAILED",
+      actorId: "system",
+      actorType:AuthRole.User,
+      entityType: "EMAIL",
+      entityId: email,
+      metadata: { email: email, error: error.message },
+      ipAddress: "system",
+      userAgent: "system",
+    });
       throw new HttpException(500, "Queue Failed", "Queue Error");
     }
   }
