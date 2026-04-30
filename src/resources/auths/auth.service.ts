@@ -105,7 +105,7 @@ class AuthService {
     password: string,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ accessToken: string; refreshToken: string ,message?:string}> {
     let user = null;
     try {
       user = await authModel.findOne({ email: email });
@@ -118,8 +118,38 @@ class AuthService {
 
       if (!(await user.isValidPassword(password)))
         throw new HttpException(401, "Unauthorized", "Invalid credentials");
-      if (!user.isVerified)
-        throw new HttpException(401, "Unauthorized", "User not verified");
+      if (!user.isVerified){
+         const OtpCode = await this.Otp.saveOtp(user.id.toString(),OtpPurpose.VERIFICATION);
+     const templates = Mailtemplates.userVerificationTemplate.replace(
+      "{{OTP_CODE}}",
+        OtpCode,
+    );
+    await this.logs.logAction(
+      {
+        actorId: user._id,
+        actorType: user.userRole,
+        action: "USER_VERIFICATION_REQUESTED",
+        entityType: user.userRole,
+        entityId: user._id,
+        status: "SUCCESS",
+        metadata: { email: user.email },
+      }
+    )
+    await this.Agenda.sendNow(
+      user.email,
+      "Verify your Email",
+      templates,
+      "Verification",
+    );
+
+    return {
+      message:"User not verified Opt has been sent to your email ",
+      accessToken: "",
+      refreshToken: "",
+    }
+
+      }
+       
 
       //check if user already has nan active session
 
