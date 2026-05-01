@@ -92,10 +92,11 @@ class AuthService {
         metadata: { email: data.email, error: error.message },
         }
       )
+      if (error instanceof HttpException) throw error;
       throw new HttpException(
-        404,
+        400,
         "failed",
-        `User registeration failed ${error}`,
+        `User registeration failed`,
       );
     }
   }
@@ -142,12 +143,7 @@ class AuthService {
       "Verification",
     );
 
-    return {
-      message:"User not verified Opt has been sent to your email ",
-      accessToken: "",
-      refreshToken: "",
-    }
-
+    throw new HttpException(403, "user_not_verified", "User not verified. An OTP has been sent to your email.");
       }
        
 
@@ -192,7 +188,8 @@ class AuthService {
         metadata: { email: email, error: error.message },
         }
       )
-      throw new HttpException(404, "failed", `User login failed `);
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(400, "failed", `User login failed: ${error.message}`);
     }
   }
 
@@ -293,10 +290,11 @@ class AuthService {
         userAgent,
         metadata: { error: error.message }
       });
+      if (error instanceof HttpException) throw error;
       throw new HttpException(
-        404,
+        400,
         "failed",
-        `Failed to generate a new accessToken `,
+        `Failed to generate a new accessToken: ${error.message}`,
       );
     }
   }
