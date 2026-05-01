@@ -23,10 +23,25 @@ class NodeMailerService {
         html: content,
         headers: { category: mailCategory || "General" },
       });
-    
+     logger.info(`Email sent successfully to ${reciever}`, {
+      subject,
+      mailCategory,
+      messageId: info.messageId,
+      response: info.response,
+    });
+    return info;
     } catch (error) {
-      logger.error(`Error sending email`, { error });
+         logger.error(`[EMAIL ERROR] Job <${recieverEmails}> failed`, {
+          message: error.message,
+          stack: error.stack,
+          code: error.code,
+          response: error.response,
+          command: error.command,
+          full: error,
+});
+  throw error;
     }
+  
   }
   public async send(
     email: string,
