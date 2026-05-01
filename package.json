@@ -41,6 +41,7 @@
   "dependencies": {
     "@bull-board/api": "^6.20.6",
     "@bull-board/express": "^6.20.6",
+    "@sendgrid/mail": "^8.1.6",
     "agenda": "^5.0.0",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",

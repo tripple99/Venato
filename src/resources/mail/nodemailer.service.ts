@@ -1,8 +1,16 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 import logger from "../../utils/logger";
 
-
 class NodeMailerService {
+  constructor() {
+    const apiKey = process.env.SENDGRID_API_KEY || "";
+    if (apiKey) {
+      sgMail.setApiKey(apiKey);
+    } else {
+      logger.warn("SENDGRID_API_KEY is not defined in environment variables.");
+    }
+  }
+
   public async sendMail(
     recieverEmails: string | string[],
     subject: string,
@@ -10,65 +18,52 @@ class NodeMailerService {
     mailCategory: string,
   ) {
     try {
-      const transporter = this.createTransporter();
-      const user = this.getSender();
+      const sender = this.getSender();
       const reciever = Array.isArray(recieverEmails)
         ? recieverEmails
         : [recieverEmails];
-      // const htmlContent =
-      const info = await transporter.sendMail({
-        from: user,
+
+      const msg = {
         to: reciever,
+        from: sender,
         subject: subject,
         html: content,
-        headers: { category: mailCategory || "General" },
+        categories: [mailCategory || "General"],
+      };
+
+      const [response] = await sgMail.send(msg);
+
+      logger.info(`Email sent successfully to ${reciever}`, {
+        subject,
+        mailCategory,
+        statusCode: response.statusCode,
+        messageId: response.headers["x-message-id"],
       });
-     logger.info(`Email sent successfully to ${reciever}`, {
-      subject,
-      mailCategory,
-      messageId: info.messageId,
-      response: info.response,
-    });
-    return info;
-    } catch (error) {
-         logger.error(`[EMAIL ERROR] Job <${recieverEmails}> failed`, {
-          message: error.message,
-          stack: error.stack,
-          code: error.code,
-          response: error.response,
-          command: error.command,
-          full: error,
-});
-  throw error;
+      return response;
+    } catch (error: any) {
+      logger.error(`[EMAIL ERROR] Job <${recieverEmails}> failed`, {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        response: error.response?.body,
+        full: error,
+      });
+      throw error;
     }
-  
   }
+
   public async send(
-    email: string,
+    email: string | string[],
     subject: string,
     content: string,
     mailCategory: string,
   ) {
     return this.sendMail(email, subject, content, mailCategory);
   }
-  private createTransporter() {
-    const user = process.env.GMAIL_USER;
-    const password = process.env.GMAIL_PASS;
 
-    return nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      family: 4,
-      auth: {
-        user: user,
-        pass: password,
-      },
-    } as nodemailer.TransportOptions);
-  }
   private getSender() {
     return {
-      address: process.env.GMAIL_USER || "",
+      email: process.env.SENDGRID_SENDER_EMAIL || process.env.GMAIL_USER || "",
       name: "Venato",
     };
   }
