@@ -372,21 +372,24 @@ class AuthService {
         const uid = user.id.toString();
         const otp = await this.Otp.saveOtp(uid,purpose);
       
-        let templates:string;
-        let subject:string;
-        if(purpose === OtpPurpose.VERIFICATION){
-        subject = "Verify your Email"  
-        templates = Mailtemplates.userVerificationTemplate.replace(
-          "{{OTP_CODE}}",
-          otp,
-        );
-        }
-        if(purpose === OtpPurpose.RESETPASSWORD){
-          subject = "Reset your Password"
+        let templates: string;
+        let subject: string;
+        
+        if (purpose === OtpPurpose.VERIFICATION || purpose === OtpPurpose.Registration) {
+          subject = "Verify your Email";
+          templates = Mailtemplates.userVerificationTemplate.replace(
+            "{{OTP_CODE}}",
+            otp,
+          );
+        } else if (purpose === OtpPurpose.RESETPASSWORD) {
+          subject = "Reset your Password";
           templates = Mailtemplates.forgotPasswordTemplate.replace(
             "{{OTP_CODE}}",
             otp,
           );
+        } else {
+          subject = "Your OTP Code";
+          templates = `Your OTP Code is ${otp}`;
         }
         
         await this.Agenda.sendNow(
