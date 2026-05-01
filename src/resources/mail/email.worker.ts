@@ -95,6 +95,7 @@ class AgendaQueueService {
       ipAddress: "system",
       userAgent: "system",
     });
+      logger.error(`[QUEUE ERROR] Job <${email}> failed: ${error.message}`, { error });
       throw new HttpException(500, "Queue Failed", "Queue Error");
     }
   }
