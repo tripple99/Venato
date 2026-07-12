@@ -46,7 +46,10 @@ export const authenticate = async (
    await authModel.findOneAndUpdate(
   {
     _id: payload.id,
-    lastActive: { $lt: new Date(Date.now() - 5 * 60 * 1000) }
+    $or: [
+      { lastActive: { $lt: new Date(Date.now() - 5 * 60 * 1000) } },
+      { lastActive: null }
+    ]
   },
   {
     $set: {
@@ -108,7 +111,10 @@ export const authenticateOptional = async (
     await authModel.findOneAndUpdate(
       {
         _id: payload.id,
-        lastActive: { $lt: new Date(Date.now() - 5 * 60 * 1000) }
+        $or: [
+          { lastActive: { $lt: new Date(Date.now() - 5 * 60 * 1000) } },
+          { lastActive: null }
+        ]
       },
       {
         $set: {
