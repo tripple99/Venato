@@ -6,7 +6,9 @@ const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
   winston.format.errors({ stack: true }), // captures stack traces
   winston.format.printf((info) => {
-    return `${info.timestamp} ${info.level}: ${info.message}${info.stack ? '\n' + info.stack : ''}`;
+    const { timestamp, level, message, stack, ...meta } = info;
+    const metaString = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+    return `${timestamp} ${level}: ${message}${metaString}${stack ? '\n' + stack : ''}`;
   })
 );
 

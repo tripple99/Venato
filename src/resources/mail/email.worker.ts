@@ -13,22 +13,33 @@ const auditLogService = new AuditLogService();
 agenda.define("sendMail", async (job: Job) => {
   try {
     const { email, subject, content, mailCategory } = job.attrs.data;
-    const result = await nodeMailerService.send(email, subject, content, mailCategory);
-  
+    await nodeMailerService.send(email, subject, content, mailCategory);
+
     await job.remove();
   } catch (error: any) {
+    const details = error.response?.body
+      ? JSON.stringify(error.response.body)
+      : error.message;
+
     await auditLogService.logAction({
       action: "EMAIL_FAILED",
       status: "FAILED",
-      actorId: "system",
-      actorType:AuthRole.User,
+      actorType: AuthRole.User,
       entityType: "EMAIL",
-      entityId: job.attrs.data.email,
-      metadata: { email: job.attrs.data.email, error: error.message },
+      metadata: {
+        email: job.attrs.data.email,
+        error: error.message,
+        response: error.response?.body,
+      },
       ipAddress: "system",
       userAgent: "system",
     });
-    logger.error(`[QUEUE ERROR] Job <${job.attrs.name}> failed: ${error.message}`, { error });
+    logger.error(`[QUEUE ERROR] Job <${job.attrs.name}> failed: ${details}`, {
+      email: job.attrs.data.email,
+      code: error.code,
+      response: error.response?.body,
+    });
+    throw error;
   }
 });
 
@@ -52,18 +63,16 @@ class AgendaQueueService {
         content,
         mailCategory,
       });
-    } catch (error) {
-       await auditLogService.logAction({
-      action: "EMAIL_FAILED",
-      status: "FAILED",
-      actorId: "system",
-      actorType:AuthRole.User,
-      entityType: "EMAIL",
-      entityId: email,
-      metadata: { email: email, error: error.message },
-      ipAddress: "system",
-      userAgent: "system",
-    });
+    } catch (error: any) {
+      await auditLogService.logAction({
+        action: "EMAIL_FAILED",
+        status: "FAILED",
+        actorType: AuthRole.User,
+        entityType: "EMAIL",
+        metadata: { email, error: error.message },
+        ipAddress: "system",
+        userAgent: "system",
+      });
       throw new HttpException(500, "Queue Failed", "Queue Error");
     }
   }
@@ -84,26 +93,20 @@ class AgendaQueueService {
         content,
         mailCategory,
       });
-    } catch (error) {
-       await auditLogService.logAction({
-      action: "EMAIL_FAILED",
-      status: "FAILED",
-      actorId: "system",
-      actorType:AuthRole.User,
-      entityType: "EMAIL",
-      entityId: email,
-      metadata: { email: email, error: error.message },
-      ipAddress: "system",
-      userAgent: "system",
-    });
-   logger.error(`[QUEUE ERROR] Job <${email}> failed`, {
-  message: error.message,
-  stack: error.stack,
-  code: error.code,
-  response: error.response,
-  command: error.command,
-  full: error,
-});
+    } catch (error: any) {
+      await auditLogService.logAction({
+        action: "EMAIL_FAILED",
+        status: "FAILED",
+        actorType: AuthRole.User,
+        entityType: "EMAIL",
+        metadata: { email, error: error.message },
+        ipAddress: "system",
+        userAgent: "system",
+      });
+      logger.error(`[QUEUE ERROR] Job <${email}> failed: ${error.message}`, {
+        code: error.code,
+        response: error.response?.body,
+      });
       throw new HttpException(500, "Queue Failed", "Queue Error");
     }
   }

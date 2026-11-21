@@ -18,7 +18,17 @@ class NodeMailerService {
     mailCategory: string,
   ) {
     try {
+      if (!process.env.SENDGRID_API_KEY) {
+        throw new Error("SENDGRID_API_KEY is not defined in environment variables.");
+      }
+
       const sender = this.getSender();
+      if (!sender.email) {
+        throw new Error(
+          "Sender email is not configured. Set SENDGRID_SENDER_EMAIL in environment variables.",
+        );
+      }
+
       const reciever = Array.isArray(recieverEmails)
         ? recieverEmails
         : [recieverEmails];
@@ -41,12 +51,13 @@ class NodeMailerService {
       });
       return response;
     } catch (error: any) {
-      logger.error(`[EMAIL ERROR] Job <${recieverEmails}> failed`, {
+      const sgDetails = error.response?.body
+        ? JSON.stringify(error.response.body)
+        : error.message;
+      logger.error(`[EMAIL ERROR] Job <${recieverEmails}> failed: ${sgDetails}`, {
         message: error.message,
-        stack: error.stack,
         code: error.code,
         response: error.response?.body,
-        full: error,
       });
       throw error;
     }
