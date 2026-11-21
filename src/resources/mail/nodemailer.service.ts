@@ -1,9 +1,11 @@
+import axios from "axios";
 import dns from "dns";
 import net from "net";
 import nodemailer, { Transporter } from "nodemailer";
 import logger from "../../utils/logger";
 
 const TRANSPORTER_TTL_MS = 5 * 60 * 1000;
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
 class NodeMailerService {
   private transporter: Transporter | null = null;
@@ -40,7 +42,7 @@ class NodeMailerService {
 
     if (!host || !user || !pass) {
       throw new Error(
-        "SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
+        "SMTP is not configured. Set BREVO_API_KEY (recommended on Render) or SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
       );
     }
 
@@ -120,6 +122,75 @@ class NodeMailerService {
     );
   }
 
+  private async sendViaBrevoHttp(
+    recipients: string[],
+    subject: string,
+    content: string,
+    mailCategory: string,
+    sender: { name: string; address: string },
+  ) {
+    const apiKey = process.env.BREVO_API_KEY!;
+
+    logger.info("[EMAIL] Sending email via Brevo HTTPS API", {
+      to: recipients,
+      from: sender.address,
+      subject,
+      mailCategory,
+    });
+
+    try {
+      const response = await axios.post(
+        BREVO_API_URL,
+        {
+          sender: {
+            name: sender.name,
+            email: sender.address,
+          },
+          to: recipients.map((email) => ({ email })),
+          subject,
+          htmlContent: content,
+          textContent: this.htmlToPlainText(content),
+          tags: [mailCategory || "General"],
+        },
+        {
+          headers: {
+            "api-key": apiKey,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          timeout: 15000,
+        },
+      );
+
+      logger.info(`[EMAIL] Sent successfully via Brevo API to ${recipients}`, {
+        subject,
+        mailCategory,
+        status: response.status,
+        messageId: response.data?.messageId,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      const status = error.response?.status;
+      const data = error.response?.data;
+      const errMessage =
+        data?.message || error.message || "Brevo API request failed";
+
+      logger.error(`[EMAIL ERROR] Brevo API failed for <${recipients}>: ${errMessage}`, {
+        status,
+        code: data?.code || error.code,
+        response: data,
+      });
+
+      const wrapped: any = new Error(errMessage);
+      wrapped.code = data?.code || error.code;
+      wrapped.responseCode = status;
+      wrapped.response = data;
+      wrapped.command = "BREVO_HTTP_API";
+      throw wrapped;
+    }
+  }
+
   public async sendMail(
     recieverEmails: string | string[],
     subject: string,
@@ -129,13 +200,18 @@ class NodeMailerService {
     const sender = this.getSender();
     if (!sender.address) {
       throw new Error(
-        "Sender email is not configured. Set SMTP_FROM or SMTP_USER in environment variables.",
+        "Sender email is not configured. Set BREVO_SENDER_EMAIL, SMTP_FROM, or SMTP_USER in environment variables.",
       );
     }
 
     const reciever = Array.isArray(recieverEmails)
       ? recieverEmails
       : [recieverEmails];
+
+    // Prefer HTTPS API when configured (required on hosts like Render that block outbound SMTP)
+    if (process.env.BREVO_API_KEY) {
+      return this.sendViaBrevoHttp(reciever, subject, content, mailCategory, sender);
+    }
 
     const mailOptions = {
       from: sender,
@@ -154,7 +230,7 @@ class NodeMailerService {
       const { transporter, port } = await this.getTransporter();
       usedPort = port;
 
-      logger.info("[EMAIL] Sending email", {
+      logger.info("[EMAIL] Sending email via SMTP", {
         to: reciever,
         subject,
         mailCategory,
@@ -177,7 +253,6 @@ class NodeMailerService {
     } catch (error: any) {
       this.resetTransporter();
 
-      // If primary SMTP port timed out / failed to connect, try alternate TLS port (465 <-> 587)
       const fallbackPort = usedPort === 465 ? 587 : usedPort === 587 ? 465 : null;
       if (fallbackPort && this.isConnectionError(error)) {
         logger.warn(
@@ -266,6 +341,7 @@ class NodeMailerService {
     return {
       name: process.env.SMTP_FROM_NAME || "Venato",
       address:
+        process.env.BREVO_SENDER_EMAIL ||
         process.env.SMTP_FROM ||
         process.env.SMTP_USER ||
         process.env.GMAIL_USER ||
