@@ -582,6 +582,9 @@ class AuthService {
       const result = await authModel.findByIdAndUpdate(
         auth?.id,
         {
+          $set: {
+            isActive: false,
+          },
           $unset: {
             sessionToken: "",
             refreshToken: "",
