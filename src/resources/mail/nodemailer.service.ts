@@ -1,14 +1,40 @@
-import sgMail from "@sendgrid/mail";
+import nodemailer, { Transporter } from "nodemailer";
 import logger from "../../utils/logger";
 
 class NodeMailerService {
+  private transporter: Transporter | null = null;
+
   constructor() {
-    const apiKey = process.env.SENDGRID_API_KEY || "";
-    if (apiKey) {
-      sgMail.setApiKey(apiKey);
-    } else {
-      logger.warn("SENDGRID_API_KEY is not defined in environment variables.");
+    this.initTransporter();
+  }
+
+  private initTransporter() {
+    const host = process.env.SMTP_HOST;
+    const port = Number(process.env.SMTP_PORT) || 587;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+
+    if (!host || !user || !pass) {
+      logger.warn(
+        "SMTP configuration incomplete. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
+      );
+      return;
     }
+
+    this.transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      pool: true,
+      maxConnections: 5,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      auth: {
+        user,
+        pass,
+      },
+    });
   }
 
   public async sendMail(
@@ -18,14 +44,19 @@ class NodeMailerService {
     mailCategory: string,
   ) {
     try {
-      if (!process.env.SENDGRID_API_KEY) {
-        throw new Error("SENDGRID_API_KEY is not defined in environment variables.");
+      if (!this.transporter) {
+        this.initTransporter();
+      }
+      if (!this.transporter) {
+        throw new Error(
+          "SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
+        );
       }
 
       const sender = this.getSender();
-      if (!sender.email) {
+      if (!sender.address) {
         throw new Error(
-          "Sender email is not configured. Set SENDGRID_SENDER_EMAIL in environment variables.",
+          "Sender email is not configured. Set SMTP_FROM or SMTP_USER in environment variables.",
         );
       }
 
@@ -33,32 +64,37 @@ class NodeMailerService {
         ? recieverEmails
         : [recieverEmails];
 
-      const msg = {
-        to: reciever,
+      const info = await this.transporter.sendMail({
         from: sender,
-        subject: subject,
+        to: reciever,
+        subject,
         html: content,
-        categories: [mailCategory || "General"],
-      };
-
-      const [response] = await sgMail.send(msg);
+        text: this.htmlToPlainText(content),
+        headers: {
+          "X-Mail-Category": mailCategory || "General",
+        },
+      });
 
       logger.info(`Email sent successfully to ${reciever}`, {
         subject,
         mailCategory,
-        statusCode: response.statusCode,
-        messageId: response.headers["x-message-id"],
+        messageId: info.messageId,
+        accepted: info.accepted,
+        rejected: info.rejected,
       });
-      return response;
+
+      return info;
     } catch (error: any) {
-      const sgDetails = error.response?.body
-        ? JSON.stringify(error.response.body)
-        : error.message;
-      logger.error(`[EMAIL ERROR] Job <${recieverEmails}> failed: ${sgDetails}`, {
-        message: error.message,
-        code: error.code,
-        response: error.response?.body,
-      });
+      logger.error(
+        `[EMAIL ERROR] Job <${recieverEmails}> failed: ${error.message}`,
+        {
+          message: error.message,
+          code: error.code,
+          responseCode: error.responseCode,
+          response: error.response,
+          command: error.command,
+        },
+      );
       throw error;
     }
   }
@@ -74,9 +110,22 @@ class NodeMailerService {
 
   private getSender() {
     return {
-      email: process.env.SENDGRID_SENDER_EMAIL || process.env.GMAIL_USER || "",
-      name: "Venato",
+      name: process.env.SMTP_FROM_NAME || "Venato",
+      address:
+        process.env.SMTP_FROM ||
+        process.env.SMTP_USER ||
+        process.env.GMAIL_USER ||
+        "",
     };
+  }
+
+  private htmlToPlainText(html: string): string {
+    return html
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 }
 
