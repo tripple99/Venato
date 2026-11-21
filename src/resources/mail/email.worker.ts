@@ -13,13 +13,20 @@ const auditLogService = new AuditLogService();
 agenda.define("sendMail", async (job: Job) => {
   try {
     const { email, subject, content, mailCategory } = job.attrs.data;
+    logger.info(`[QUEUE] Processing sendMail job`, {
+      email,
+      subject,
+      mailCategory,
+    });
     await nodeMailerService.send(email, subject, content, mailCategory);
 
     await job.remove();
   } catch (error: any) {
-    const details = error.response?.body
-      ? JSON.stringify(error.response.body)
-      : error.message;
+    const rawResponse = error.response?.body ?? error.response ?? null;
+    const details =
+      rawResponse && typeof rawResponse === "object"
+        ? JSON.stringify(rawResponse)
+        : rawResponse || error.message;
 
     await auditLogService.logAction({
       action: "EMAIL_FAILED",
@@ -29,7 +36,10 @@ agenda.define("sendMail", async (job: Job) => {
       metadata: {
         email: job.attrs.data.email,
         error: error.message,
-        response: error.response?.body,
+        code: error.code,
+        command: error.command,
+        responseCode: error.responseCode,
+        response: rawResponse,
       },
       ipAddress: "system",
       userAgent: "system",
@@ -37,7 +47,9 @@ agenda.define("sendMail", async (job: Job) => {
     logger.error(`[QUEUE ERROR] Job <${job.attrs.name}> failed: ${details}`, {
       email: job.attrs.data.email,
       code: error.code,
-      response: error.response?.body,
+      command: error.command,
+      responseCode: error.responseCode,
+      response: rawResponse,
     });
     throw error;
   }

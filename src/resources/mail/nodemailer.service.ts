@@ -8,6 +8,7 @@ const TRANSPORTER_TTL_MS = 5 * 60 * 1000;
 class NodeMailerService {
   private transporter: Transporter | null = null;
   private transporterCreatedAt = 0;
+  private activePort: number | null = null;
 
   private async resolveIPv4Host(host: string): Promise<string> {
     if (net.isIP(host)) {
@@ -19,15 +20,21 @@ class NodeMailerService {
       return address;
     } catch (error: any) {
       logger.warn(
-        `IPv4 lookup failed for SMTP host "${host}", falling back to hostname: ${error.message}`,
+        `[EMAIL] IPv4 lookup failed for SMTP host "${host}", falling back to hostname: ${error.message}`,
       );
       return host;
     }
   }
 
-  private async getTransporter(): Promise<Transporter> {
+  private async createTransporterForPort(portOverride?: number): Promise<{
+    transporter: Transporter;
+    host: string;
+    resolvedHost: string;
+    port: number;
+    secure: boolean;
+  }> {
     const host = process.env.SMTP_HOST;
-    const port = Number(process.env.SMTP_PORT) || 587;
+    const port = portOverride ?? (Number(process.env.SMTP_PORT) || 587);
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
@@ -37,30 +44,27 @@ class NodeMailerService {
       );
     }
 
-    const isFresh =
-      this.transporter &&
-      Date.now() - this.transporterCreatedAt < TRANSPORTER_TTL_MS;
-
-    if (isFresh && this.transporter) {
-      return this.transporter;
-    }
-
-    if (this.transporter) {
-      this.transporter.close();
-      this.transporter = null;
-    }
-
     const resolvedHost = await this.resolveIPv4Host(host);
+    const secure = port === 465;
 
-    this.transporter = nodemailer.createTransport({
+    logger.info("[EMAIL] Creating SMTP transporter", {
+      host,
+      resolvedHost,
+      port,
+      secure,
+      user,
+    });
+
+    const transporter = nodemailer.createTransport({
       host: resolvedHost,
       port,
-      secure: port === 465,
+      secure,
+      requireTLS: !secure,
       pool: true,
       maxConnections: 5,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
       tls: {
         servername: host,
       },
@@ -69,9 +73,51 @@ class NodeMailerService {
         pass,
       },
     });
+
+    return { transporter, host, resolvedHost, port, secure };
+  }
+
+  private async getTransporter(): Promise<{
+    transporter: Transporter;
+    port: number;
+  }> {
+    const configuredPort = Number(process.env.SMTP_PORT) || 587;
+    const isFresh =
+      this.transporter &&
+      this.activePort !== null &&
+      Date.now() - this.transporterCreatedAt < TRANSPORTER_TTL_MS;
+
+    if (isFresh && this.transporter && this.activePort !== null) {
+      return { transporter: this.transporter, port: this.activePort };
+    }
+
+    this.resetTransporter();
+
+    const created = await this.createTransporterForPort(configuredPort);
+    this.transporter = created.transporter;
+    this.activePort = created.port;
     this.transporterCreatedAt = Date.now();
 
-    return this.transporter;
+    return { transporter: this.transporter, port: created.port };
+  }
+
+  private resetTransporter() {
+    if (this.transporter) {
+      this.transporter.close();
+      this.transporter = null;
+      this.transporterCreatedAt = 0;
+      this.activePort = null;
+    }
+  }
+
+  private isConnectionError(error: any): boolean {
+    const code = String(error?.code || "").toUpperCase();
+    const msg = String(error?.message || "").toLowerCase();
+    return (
+      ["ETIMEDOUT", "ECONNECTION", "ECONNREFUSED", "ENETUNREACH", "ESOCKET"].includes(code) ||
+      msg.includes("timeout") ||
+      msg.includes("timed out")
+    );
   }
 
   public async sendMail(
@@ -80,34 +126,48 @@ class NodeMailerService {
     content: string,
     mailCategory: string,
   ) {
+    const sender = this.getSender();
+    if (!sender.address) {
+      throw new Error(
+        "Sender email is not configured. Set SMTP_FROM or SMTP_USER in environment variables.",
+      );
+    }
+
+    const reciever = Array.isArray(recieverEmails)
+      ? recieverEmails
+      : [recieverEmails];
+
+    const mailOptions = {
+      from: sender,
+      to: reciever,
+      subject,
+      html: content,
+      text: this.htmlToPlainText(content),
+      headers: {
+        "X-Mail-Category": mailCategory || "General",
+      },
+    };
+
+    let usedPort = Number(process.env.SMTP_PORT) || 587;
+
     try {
-      const transporter = await this.getTransporter();
+      const { transporter, port } = await this.getTransporter();
+      usedPort = port;
 
-      const sender = this.getSender();
-      if (!sender.address) {
-        throw new Error(
-          "Sender email is not configured. Set SMTP_FROM or SMTP_USER in environment variables.",
-        );
-      }
-
-      const reciever = Array.isArray(recieverEmails)
-        ? recieverEmails
-        : [recieverEmails];
-
-      const info = await transporter.sendMail({
-        from: sender,
+      logger.info("[EMAIL] Sending email", {
         to: reciever,
         subject,
-        html: content,
-        text: this.htmlToPlainText(content),
-        headers: {
-          "X-Mail-Category": mailCategory || "General",
-        },
+        mailCategory,
+        host: process.env.SMTP_HOST,
+        port,
       });
 
-      logger.info(`Email sent successfully to ${reciever}`, {
+      const info = await transporter.sendMail(mailOptions);
+
+      logger.info(`[EMAIL] Sent successfully to ${reciever}`, {
         subject,
         mailCategory,
+        port,
         messageId: info.messageId,
         accepted: info.accepted,
         rejected: info.rejected,
@@ -115,17 +175,75 @@ class NodeMailerService {
 
       return info;
     } catch (error: any) {
-      if (this.transporter) {
-        this.transporter.close();
-        this.transporter = null;
-        this.transporterCreatedAt = 0;
+      this.resetTransporter();
+
+      // If primary SMTP port timed out / failed to connect, try alternate TLS port (465 <-> 587)
+      const fallbackPort = usedPort === 465 ? 587 : usedPort === 587 ? 465 : null;
+      if (fallbackPort && this.isConnectionError(error)) {
+        logger.warn(
+          `[EMAIL] Connection failed on port ${usedPort} (${error.message}). Retrying on fallback port ${fallbackPort}...`,
+          {
+            to: reciever,
+            host: process.env.SMTP_HOST,
+            failedPort: usedPort,
+            fallbackPort,
+            code: error.code,
+          },
+        );
+
+        try {
+          const fallback = await this.createTransporterForPort(fallbackPort);
+          this.transporter = fallback.transporter;
+          this.activePort = fallback.port;
+          this.transporterCreatedAt = Date.now();
+
+          const info = await fallback.transporter.sendMail(mailOptions);
+
+          logger.info(
+            `[EMAIL] Sent successfully to ${reciever} via fallback port ${fallbackPort}`,
+            {
+              subject,
+              mailCategory,
+              port: fallbackPort,
+              messageId: info.messageId,
+              accepted: info.accepted,
+              rejected: info.rejected,
+            },
+          );
+
+          return info;
+        } catch (fallbackError: any) {
+          this.resetTransporter();
+          logger.error(
+            `[EMAIL ERROR] Fallback port ${fallbackPort} also failed for <${recieverEmails}>: ${fallbackError.message}`,
+            {
+              host: process.env.SMTP_HOST,
+              primaryPort: usedPort,
+              fallbackPort,
+              message: fallbackError.message,
+              code: fallbackError.code,
+              errno: fallbackError.errno,
+              syscall: fallbackError.syscall,
+              address: fallbackError.address,
+              responseCode: fallbackError.responseCode,
+              response: fallbackError.response,
+              command: fallbackError.command,
+            },
+          );
+          throw fallbackError;
+        }
       }
 
       logger.error(
         `[EMAIL ERROR] Job <${recieverEmails}> failed: ${error.message}`,
         {
+          host: process.env.SMTP_HOST,
+          port: usedPort,
           message: error.message,
           code: error.code,
+          errno: error.errno,
+          syscall: error.syscall,
+          address: error.address,
           responseCode: error.responseCode,
           response: error.response,
           command: error.command,
