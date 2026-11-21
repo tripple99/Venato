@@ -1,6 +1,4 @@
-import {z} from "zod";
-import { Market } from "./market.interface";
-
+import { z } from "zod";
 
 const geolocationSchema = z.object({
   latitude: z.string(),
@@ -11,29 +9,35 @@ const geolocationSchema = z.object({
 const locationSchema = z.object({
   state: z.string(),
   code: z.string(),
-  LGA: z.string(),
+  LGA: z.string().optional(),
   country: z.string(),
+  coordinates: geolocationSchema.optional(),
   cordinates: geolocationSchema.optional(),
 });
 
-
 const createMarket = z.object({
-   name:z.string(),
-   currency: z.string().regex(/^NGN$/,{
-  message: "Currency must be NGN",
-}),
+  name: z.string(),
+  currency: z.string().regex(/^NGN$/, {
+    message: "Currency must be NGN",
+  }),
+  location: locationSchema,
+  isActive: z.boolean().optional(),
+});
 
- location:locationSchema,
-})
 const updateMarket = z.object({
-   marketName:z.string().optional(),
-   currency: z.string().regex(/^NGN$/,{
-  message: "Currency must be NGN",
-}).optional(),
-   location:locationSchema.optional(),
-}) 
+  name: z.string().optional(),
+  currency: z
+    .string()
+    .regex(/^NGN$/, {
+      message: "Currency must be NGN",
+    })
+    .optional(),
+  location: locationSchema.partial().optional(),
+  isActive: z.boolean().optional(),
+  isDeleted: z.boolean().optional(),
+});
 
-export default{
+export default {
   createMarket,
-  updateMarket
-}
+  updateMarket,
+};

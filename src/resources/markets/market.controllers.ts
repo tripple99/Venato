@@ -21,7 +21,7 @@ class MarketController implements GlobalController{
       this.router.get('/',[authenticate,authorize([AuthRole.superAdmin])],this.fetchAllMarket)
       this.router.get('/:id',[authenticate,authorize([AuthRole.superAdmin,AuthRole.Admin])],this.fetchById)
       this.router.post("/",[authenticate,authorize([AuthRole.superAdmin])],schemaValidator(validator.createMarket),this.createMarket);
-      this.router.patch("/:id",[authenticate,authorize([AuthRole.superAdmin])],schemaValidator(validator.createMarket),this.updateMarket);
+      this.router.patch("/:id",[authenticate,authorize([AuthRole.superAdmin])],schemaValidator(validator.updateMarket),this.updateMarket);
       this.router.delete("/:id",[authenticate,authorize([AuthRole.superAdmin])],this.deleteMarket);
    } 
     
