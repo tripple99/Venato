@@ -1,28 +1,59 @@
+import dns from "dns";
+import net from "net";
 import nodemailer, { Transporter } from "nodemailer";
 import logger from "../../utils/logger";
 
+const TRANSPORTER_TTL_MS = 5 * 60 * 1000;
+
 class NodeMailerService {
   private transporter: Transporter | null = null;
+  private transporterCreatedAt = 0;
 
-  constructor() {
-    this.initTransporter();
+  private async resolveIPv4Host(host: string): Promise<string> {
+    if (net.isIP(host)) {
+      return host;
+    }
+
+    try {
+      const { address } = await dns.promises.lookup(host, { family: 4 });
+      return address;
+    } catch (error: any) {
+      logger.warn(
+        `IPv4 lookup failed for SMTP host "${host}", falling back to hostname: ${error.message}`,
+      );
+      return host;
+    }
   }
 
-  private initTransporter() {
+  private async getTransporter(): Promise<Transporter> {
     const host = process.env.SMTP_HOST;
     const port = Number(process.env.SMTP_PORT) || 587;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
     if (!host || !user || !pass) {
-      logger.warn(
-        "SMTP configuration incomplete. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
+      throw new Error(
+        "SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
       );
-      return;
     }
 
+    const isFresh =
+      this.transporter &&
+      Date.now() - this.transporterCreatedAt < TRANSPORTER_TTL_MS;
+
+    if (isFresh && this.transporter) {
+      return this.transporter;
+    }
+
+    if (this.transporter) {
+      this.transporter.close();
+      this.transporter = null;
+    }
+
+    const resolvedHost = await this.resolveIPv4Host(host);
+
     this.transporter = nodemailer.createTransport({
-      host,
+      host: resolvedHost,
       port,
       secure: port === 465,
       pool: true,
@@ -30,11 +61,17 @@ class NodeMailerService {
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
+      tls: {
+        servername: host,
+      },
       auth: {
         user,
         pass,
       },
     });
+    this.transporterCreatedAt = Date.now();
+
+    return this.transporter;
   }
 
   public async sendMail(
@@ -44,14 +81,7 @@ class NodeMailerService {
     mailCategory: string,
   ) {
     try {
-      if (!this.transporter) {
-        this.initTransporter();
-      }
-      if (!this.transporter) {
-        throw new Error(
-          "SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.",
-        );
-      }
+      const transporter = await this.getTransporter();
 
       const sender = this.getSender();
       if (!sender.address) {
@@ -64,7 +94,7 @@ class NodeMailerService {
         ? recieverEmails
         : [recieverEmails];
 
-      const info = await this.transporter.sendMail({
+      const info = await transporter.sendMail({
         from: sender,
         to: reciever,
         subject,
@@ -85,6 +115,12 @@ class NodeMailerService {
 
       return info;
     } catch (error: any) {
+      if (this.transporter) {
+        this.transporter.close();
+        this.transporter = null;
+        this.transporterCreatedAt = 0;
+      }
+
       logger.error(
         `[EMAIL ERROR] Job <${recieverEmails}> failed: ${error.message}`,
         {
